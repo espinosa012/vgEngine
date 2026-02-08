@@ -556,6 +556,80 @@ class VGMatrix2D:
 
         return result
 
+    def from_noise(
+        self,
+        noise: "NoiseGenerator",
+        row_start: int,
+        row_end: int,
+        col_start: int,
+        col_end: int
+    ) -> None:
+        """
+        Fill the matrix with values from a noise region.
+
+        The requested region is clipped to fit within the matrix dimensions.
+        This method uses vectorized operations for efficient large-region sampling.
+
+        Args:
+            noise: Source noise generator with generate_region or get_value_at method.
+            row_start: Starting row index in noise space (inclusive).
+            row_end: Ending row index in noise space (exclusive).
+            col_start: Starting column index in noise space (inclusive).
+            col_end: Ending column index in noise space (exclusive).
+
+        Note:
+            The matrix is not resized. If the requested region is larger than
+            the matrix, only the portion that fits will be filled.
+        """
+        # Validate region
+        if row_end <= row_start or col_end <= col_start:
+            return  # Empty region, nothing to do
+
+        # Calculate effective region size (clipped to matrix dimensions)
+        effective_rows = min(row_end - row_start, self._shape[0])
+        effective_cols = min(col_end - col_start, self._shape[1])
+
+        if effective_rows <= 0 or effective_cols <= 0:
+            return
+
+        # Adjust end indices based on matrix size
+        effective_row_end = row_start + effective_rows
+        effective_col_end = col_start + effective_cols
+
+        # Use generate_region for efficient vectorized noise generation
+        if hasattr(noise, 'generate_region'):
+            # generate_region expects: [(x_start, x_end, num_points), (y_start, y_end, num_points)]
+            # where coordinates are float and we want integer grid positions
+            region = [
+                (float(row_start), float(effective_row_end - 1), effective_rows),
+                (float(col_start), float(effective_col_end - 1), effective_cols)
+            ]
+            noise_data = noise.generate_region(region)
+
+            # Copy to matrix data (only the portion that fits)
+            self._data[:effective_rows, :effective_cols] = noise_data
+            self._mask[:effective_rows, :effective_cols] = True
+
+        elif hasattr(noise, 'get_values_vectorized'):
+            # Use vectorized method with meshgrid
+            rows = np.arange(row_start, effective_row_end, dtype=np.float64)
+            cols = np.arange(col_start, effective_col_end, dtype=np.float64)
+            xx, yy = np.meshgrid(rows, cols, indexing='ij')
+
+            noise_data = noise.get_values_vectorized(xx.flatten(), yy.flatten())
+            noise_data = noise_data.reshape((effective_rows, effective_cols))
+
+            self._data[:effective_rows, :effective_cols] = noise_data
+            self._mask[:effective_rows, :effective_cols] = True
+
+        else:
+            # Fallback: use get_value_at (slower but always works)
+            for r in range(effective_rows):
+                for c in range(effective_cols):
+                    value = noise.get_value_at((row_start + r, col_start + c))
+                    self._data[r, c] = value
+                    self._mask[r, c] = True
+
     def min(self, ignore_unassigned: bool = True) -> Optional[float]:
         """Get minimum value."""
         if ignore_unassigned:
@@ -637,3 +711,544 @@ class VGMatrix2D:
             self._data[self._mask],
             other._data[other._mask]
         )
+
+    # =========================================================================
+    # Filter Methods (using MatrixFilters)
+    # =========================================================================
+
+    def blur(
+        self,
+        blur_type: str = "gaussian",
+        size: int = 3,
+        sigma: float = 1.0
+    ) -> "VGMatrix2D":
+        """
+        Apply a blur filter to the matrix.
+
+        Args:
+            blur_type: Type of blur - "box", "gaussian", "motion_horizontal",
+                      "motion_vertical", "motion_diagonal".
+            size: Kernel size (must be odd, default 3).
+            sigma: Gaussian sigma (only used for gaussian blur).
+
+        Returns:
+            New blurred VGMatrix2D.
+
+        Example:
+            >>> blurred = matrix.blur("gaussian", size=5, sigma=1.5)
+        """
+        from .filters import MatrixFilters, BlurType
+
+        blur_map = {
+            "box": BlurType.BOX,
+            "gaussian": BlurType.GAUSSIAN,
+            "motion_horizontal": BlurType.MOTION_HORIZONTAL,
+            "motion_vertical": BlurType.MOTION_VERTICAL,
+            "motion_diagonal": BlurType.MOTION_DIAGONAL,
+        }
+
+        if blur_type not in blur_map:
+            raise ValueError(f"Unknown blur type: {blur_type}. Use one of: {list(blur_map.keys())}")
+
+        kernel = MatrixFilters.blur(blur_map[blur_type], size, sigma=sigma)
+        return self.convolve(kernel)
+
+    def sharpen(self, strength: float = 1.0) -> "VGMatrix2D":
+        """
+        Apply a sharpen filter to the matrix.
+
+        Args:
+            strength: Sharpening strength (1.0 = normal, higher = more sharp).
+
+        Returns:
+            New sharpened VGMatrix2D.
+        """
+        from .filters import MatrixFilters
+
+        kernel = MatrixFilters.sharpen(strength)
+        return self.convolve(kernel)
+
+    def edge_detect(self, method: str = "sobel_horizontal") -> "VGMatrix2D":
+        """
+        Apply edge detection to the matrix.
+
+        Args:
+            method: Edge detection method - "sobel_horizontal", "sobel_vertical",
+                   "prewitt_horizontal", "prewitt_vertical", "laplacian",
+                   "laplacian_diagonal".
+
+        Returns:
+            New VGMatrix2D with detected edges.
+        """
+        from .filters import MatrixFilters, EdgeDetectionType
+
+        edge_map = {
+            "sobel_horizontal": EdgeDetectionType.SOBEL_HORIZONTAL,
+            "sobel_vertical": EdgeDetectionType.SOBEL_VERTICAL,
+            "prewitt_horizontal": EdgeDetectionType.PREWITT_HORIZONTAL,
+            "prewitt_vertical": EdgeDetectionType.PREWITT_VERTICAL,
+            "laplacian": EdgeDetectionType.LAPLACIAN,
+            "laplacian_diagonal": EdgeDetectionType.LAPLACIAN_DIAGONAL,
+        }
+
+        if method not in edge_map:
+            raise ValueError(f"Unknown edge detection method: {method}. Use one of: {list(edge_map.keys())}")
+
+        kernel = MatrixFilters.edge_detection(edge_map[method])
+        return self.convolve(kernel)
+
+    def emboss(self, direction: str = "southeast", strength: float = 1.0) -> "VGMatrix2D":
+        """
+        Apply an emboss effect to the matrix.
+
+        Args:
+            direction: Light direction - "north", "south", "east", "west",
+                      "northeast", "northwest", "southeast", "southwest".
+            strength: Emboss strength multiplier.
+
+        Returns:
+            New embossed VGMatrix2D.
+        """
+        from .filters import MatrixFilters
+
+        kernel = MatrixFilters.emboss(direction, strength)
+        return self.convolve(kernel)
+
+    def high_pass(self, size: int = 3) -> "VGMatrix2D":
+        """
+        Apply a high-pass filter to the matrix.
+
+        Removes low-frequency components (smooth areas), keeping edges.
+
+        Args:
+            size: Kernel size (must be odd).
+
+        Returns:
+            New high-pass filtered VGMatrix2D.
+        """
+        from .filters import MatrixFilters
+
+        kernel = MatrixFilters.high_pass(size)
+        return self.convolve(kernel)
+
+    def low_pass(self, size: int = 3, sigma: float = 1.0) -> "VGMatrix2D":
+        """
+        Apply a low-pass filter to the matrix.
+
+        Removes high-frequency components (edges), keeping smooth areas.
+        Equivalent to Gaussian blur.
+
+        Args:
+            size: Kernel size (must be odd).
+            sigma: Gaussian sigma.
+
+        Returns:
+            New low-pass filtered VGMatrix2D.
+        """
+        from .filters import MatrixFilters
+
+        kernel = MatrixFilters.low_pass(size, sigma)
+        return self.convolve(kernel)
+
+    def ridge_detect(self) -> "VGMatrix2D":
+        """
+        Apply ridge detection to the matrix.
+
+        Highlights ridge-like structures.
+
+        Returns:
+            New VGMatrix2D with detected ridges.
+        """
+        from .filters import MatrixFilters
+
+        kernel = MatrixFilters.ridge_detection()
+        return self.convolve(kernel)
+
+    def unsharp_mask(
+        self,
+        size: int = 5,
+        sigma: float = 1.0,
+        amount: float = 1.0
+    ) -> "VGMatrix2D":
+        """
+        Apply unsharp mask sharpening.
+
+        A more sophisticated sharpening that subtracts a blurred version.
+
+        Args:
+            size: Kernel size (must be odd).
+            sigma: Gaussian sigma for blur component.
+            amount: Sharpening amount (1.0 = normal).
+
+        Returns:
+            New sharpened VGMatrix2D.
+        """
+        from .filters import MatrixFilters
+
+        kernel = MatrixFilters.unsharp_mask(size, sigma, amount)
+        return self.convolve(kernel)
+
+    # =========================================================================
+    # Serialization / Deserialization
+    # =========================================================================
+
+    def to_bytes(self, compressed: bool = True) -> bytes:
+        """
+        Serialize the matrix to a binary format.
+
+        This is the most efficient format for storage and transmission.
+        The format includes a header with version, shape, and compression info,
+        followed by the data and mask arrays.
+
+        Args:
+            compressed: If True, compress the data using zlib (default True).
+
+        Returns:
+            Bytes object containing the serialized matrix.
+
+        Example:
+            >>> matrix = VGMatrix2D((100, 100), 0.5)
+            >>> data = matrix.to_bytes()
+            >>> restored = VGMatrix2D.from_bytes(data)
+        """
+        import struct
+        import zlib
+
+        # Header format:
+        # - Magic number (4 bytes): 'VGM2' to identify the format
+        # - Version (1 byte): format version for future compatibility
+        # - Flags (1 byte): bit 0 = compressed
+        # - Rows (4 bytes, uint32)
+        # - Cols (4 bytes, uint32)
+
+        magic = b'VGM2'
+        version = 1
+        flags = 1 if compressed else 0
+
+        header = struct.pack(
+            '<4sBBII',
+            magic,
+            version,
+            flags,
+            self._shape[0],
+            self._shape[1]
+        )
+
+        # Serialize data and mask
+        data_bytes = self._data.tobytes()
+        mask_bytes = np.packbits(self._mask).tobytes()  # Pack bools to bits for efficiency
+
+        # Combine data and mask with length prefixes
+        payload = struct.pack('<I', len(data_bytes)) + data_bytes
+        payload += struct.pack('<I', len(mask_bytes)) + mask_bytes
+
+        if compressed:
+            payload = zlib.compress(payload, level=6)
+
+        return header + payload
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "VGMatrix2D":
+        """
+        Deserialize a matrix from binary format.
+
+        Args:
+            data: Bytes object containing serialized matrix data.
+
+        Returns:
+            New VGMatrix2D instance with the deserialized data.
+
+        Raises:
+            ValueError: If the data is invalid or corrupted.
+
+        Example:
+            >>> data = matrix.to_bytes()
+            >>> restored = VGMatrix2D.from_bytes(data)
+            >>> assert matrix == restored
+        """
+        import struct
+        import zlib
+
+        if len(data) < 14:  # Minimum header size
+            raise ValueError("Data too short to be a valid VGMatrix2D")
+
+        # Parse header
+        magic, version, flags, rows, cols = struct.unpack('<4sBBII', data[:14])
+
+        if magic != b'VGM2':
+            raise ValueError(f"Invalid magic number: {magic}. Expected 'VGM2'")
+
+        if version > 1:
+            raise ValueError(f"Unsupported format version: {version}")
+
+        compressed = bool(flags & 1)
+        payload = data[14:]
+
+        if compressed:
+            try:
+                payload = zlib.decompress(payload)
+            except zlib.error as e:
+                raise ValueError(f"Failed to decompress data: {e}")
+
+        # Parse payload
+        offset = 0
+
+        # Read data array
+        data_len = struct.unpack('<I', payload[offset:offset + 4])[0]
+        offset += 4
+        data_bytes = payload[offset:offset + data_len]
+        offset += data_len
+
+        # Read mask array
+        mask_len = struct.unpack('<I', payload[offset:offset + 4])[0]
+        offset += 4
+        mask_bytes = payload[offset:offset + mask_len]
+
+        # Reconstruct arrays
+        matrix_data = np.frombuffer(data_bytes, dtype=np.float64).reshape((rows, cols))
+        mask_packed = np.frombuffer(mask_bytes, dtype=np.uint8)
+        mask_unpacked = np.unpackbits(mask_packed)[:rows * cols].reshape((rows, cols))
+
+        # Create matrix
+        result = cls.__new__(cls)
+        result._shape = (rows, cols)
+        result._data = matrix_data.copy()
+        result._mask = mask_unpacked.astype(np.bool_)
+
+        return result
+
+    def to_dict(self) -> dict:
+        """
+        Serialize the matrix to a dictionary (JSON-compatible).
+
+        This format is human-readable and suitable for JSON serialization.
+        For large matrices, consider using to_bytes() instead.
+
+        Returns:
+            Dictionary containing the matrix data.
+
+        Example:
+            >>> matrix = VGMatrix2D((10, 10), 0.5)
+            >>> d = matrix.to_dict()
+            >>> import json
+            >>> json_str = json.dumps(d)
+        """
+        import base64
+
+        return {
+            "type": "VGMatrix2D",
+            "version": 1,
+            "shape": list(self._shape),
+            "data": base64.b64encode(self._data.tobytes()).decode('ascii'),
+            "mask": base64.b64encode(np.packbits(self._mask).tobytes()).decode('ascii'),
+            "dtype": str(self._data.dtype),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "VGMatrix2D":
+        """
+        Deserialize a matrix from a dictionary.
+
+        Args:
+            d: Dictionary containing serialized matrix data.
+
+        Returns:
+            New VGMatrix2D instance.
+
+        Raises:
+            ValueError: If the dictionary is invalid.
+
+        Example:
+            >>> d = matrix.to_dict()
+            >>> restored = VGMatrix2D.from_dict(d)
+        """
+        import base64
+
+        if d.get("type") != "VGMatrix2D":
+            raise ValueError(f"Invalid type: {d.get('type')}. Expected 'VGMatrix2D'")
+
+        version = d.get("version", 1)
+        if version > 1:
+            raise ValueError(f"Unsupported version: {version}")
+
+        shape = tuple(d["shape"])
+        rows, cols = shape
+
+        # Decode data
+        data_bytes = base64.b64decode(d["data"])
+        mask_bytes = base64.b64decode(d["mask"])
+
+        matrix_data = np.frombuffer(data_bytes, dtype=np.float64).reshape(shape)
+        mask_packed = np.frombuffer(mask_bytes, dtype=np.uint8)
+        mask_unpacked = np.unpackbits(mask_packed)[:rows * cols].reshape(shape)
+
+        # Create matrix
+        result = cls.__new__(cls)
+        result._shape = shape
+        result._data = matrix_data.copy()
+        result._mask = mask_unpacked.astype(np.bool_)
+
+        return result
+
+    def to_json(self, indent: Optional[int] = None) -> str:
+        """
+        Serialize the matrix to a JSON string.
+
+        Args:
+            indent: Indentation level for pretty printing. None for compact.
+
+        Returns:
+            JSON string representation of the matrix.
+
+        Example:
+            >>> json_str = matrix.to_json(indent=2)
+            >>> restored = VGMatrix2D.from_json(json_str)
+        """
+        import json
+        return json.dumps(self.to_dict(), indent=indent)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "VGMatrix2D":
+        """
+        Deserialize a matrix from a JSON string.
+
+        Args:
+            json_str: JSON string containing serialized matrix data.
+
+        Returns:
+            New VGMatrix2D instance.
+
+        Example:
+            >>> json_str = matrix.to_json()
+            >>> restored = VGMatrix2D.from_json(json_str)
+        """
+        import json
+        return cls.from_dict(json.loads(json_str))
+
+    def save(self, filepath: str, format: str = "auto") -> None:
+        """
+        Save the matrix to a file.
+
+        Args:
+            filepath: Path to the file to save.
+            format: File format - "auto" (detect from extension), "binary", "json", or "npy".
+
+        Raises:
+            ValueError: If the format is unknown.
+
+        Example:
+            >>> matrix.save("mymatrix.vgm")  # Binary format
+            >>> matrix.save("mymatrix.json")  # JSON format
+            >>> matrix.save("mymatrix.npy")   # NumPy format (no mask)
+        """
+        from pathlib import Path
+
+        path = Path(filepath)
+
+        if format == "auto":
+            ext = path.suffix.lower()
+            if ext in ('.vgm', '.vgmatrix', '.bin'):
+                format = "binary"
+            elif ext == '.json':
+                format = "json"
+            elif ext == '.npy':
+                format = "npy"
+            else:
+                format = "binary"  # Default
+
+        if format == "binary":
+            with open(filepath, 'wb') as f:
+                f.write(self.to_bytes(compressed=True))
+        elif format == "json":
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(self.to_json(indent=2))
+        elif format == "npy":
+            # NumPy format - saves data only, unassigned values become NaN
+            np.save(filepath, self.to_numpy(fill_unassigned=np.nan))
+        else:
+            raise ValueError(f"Unknown format: {format}. Use 'binary', 'json', or 'npy'")
+
+    @classmethod
+    def load(cls, filepath: str, format: str = "auto") -> "VGMatrix2D":
+        """
+        Load a matrix from a file.
+
+        Args:
+            filepath: Path to the file to load.
+            format: File format - "auto" (detect from extension), "binary", "json", or "npy".
+
+        Returns:
+            New VGMatrix2D instance with loaded data.
+
+        Raises:
+            ValueError: If the format is unknown or the file is invalid.
+            FileNotFoundError: If the file doesn't exist.
+
+        Example:
+            >>> matrix = VGMatrix2D.load("mymatrix.vgm")
+            >>> matrix = VGMatrix2D.load("mymatrix.json")
+        """
+        from pathlib import Path
+
+        path = Path(filepath)
+
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {filepath}")
+
+        if format == "auto":
+            ext = path.suffix.lower()
+            if ext in ('.vgm', '.vgmatrix', '.bin'):
+                format = "binary"
+            elif ext == '.json':
+                format = "json"
+            elif ext == '.npy':
+                format = "npy"
+            else:
+                # Try to detect by reading first bytes
+                with open(filepath, 'rb') as f:
+                    header = f.read(4)
+                if header == b'VGM2':
+                    format = "binary"
+                else:
+                    format = "json"  # Assume JSON
+
+        if format == "binary":
+            with open(filepath, 'rb') as f:
+                return cls.from_bytes(f.read())
+        elif format == "json":
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return cls.from_json(f.read())
+        elif format == "npy":
+            # Load NumPy array, NaN values become unassigned
+            data = np.load(filepath)
+            mask = ~np.isnan(data)
+            data = np.nan_to_num(data, nan=0.0)
+            return cls.from_numpy(data, mask=mask)
+        else:
+            raise ValueError(f"Unknown format: {format}. Use 'binary', 'json', or 'npy'")
+
+    def __getstate__(self) -> dict:
+        """
+        Support for pickle serialization.
+
+        Returns:
+            Dictionary containing the object state.
+        """
+        return {
+            'shape': self._shape,
+            'data': self._data,
+            'mask': self._mask,
+        }
+
+    def __setstate__(self, state: dict) -> None:
+        """
+        Support for pickle deserialization.
+
+        Args:
+            state: Dictionary containing the object state.
+        """
+        self._shape = state['shape']
+        self._data = state['data']
+        self._mask = state['mask']
+
+
