@@ -1,0 +1,151 @@
+"""
+Noise generator factory for vgNoise Viewer.
+
+This module provides a factory for creating noise generators based on type.
+"""
+
+from typing import Dict, Any, Type
+
+from vgnoise import PerlinNoise2D, OpenSimplexNoise2D
+from vgnoise.enums import NoiseType, FractalType
+
+
+class NoiseGeneratorFactory:
+    """Factory for creating noise generators."""
+
+    # Mapping of noise types to generator classes
+    _generators: Dict[NoiseType, Type] = {
+        NoiseType.PERLIN: PerlinNoise2D,
+        NoiseType.SIMPLEX: OpenSimplexNoise2D,
+    }
+
+    # Currently implemented noise types
+    IMPLEMENTED_TYPES = [NoiseType.PERLIN, NoiseType.SIMPLEX]
+
+    @classmethod
+    def create(cls, noise_type: NoiseType, **kwargs) -> Any:
+        """
+        Create a noise generator of the specified type.
+
+        Args:
+            noise_type: The type of noise generator to create.
+            **kwargs: Parameters to pass to the generator constructor.
+
+        Returns:
+            A noise generator instance.
+
+        Raises:
+            ValueError: If the noise type is not implemented.
+        """
+        if noise_type not in cls._generators:
+            raise ValueError(
+                f"Noise type {noise_type.name} is not implemented. "
+                f"Available types: {[t.name for t in cls.IMPLEMENTED_TYPES]}"
+            )
+
+        generator_class = cls._generators[noise_type]
+        return generator_class(**kwargs)
+
+    @classmethod
+    def create_from_params(cls, params: 'NoiseParameters') -> Any:
+        """
+        Create a noise generator from a NoiseParameters object.
+
+        Args:
+            params: The parameters for the generator.
+
+        Returns:
+            A noise generator instance.
+        """
+        return cls.create(
+            noise_type=params.noise_type,
+            frequency=params.frequency,
+            offset=params.offset,
+            fractal_type=params.fractal_type,
+            octaves=params.octaves,
+            lacunarity=params.lacunarity,
+            persistence=params.persistence,
+            weighted_strength=params.weighted_strength,
+            ping_pong_strength=params.ping_pong_strength,
+            seed=params.seed
+        )
+
+    @classmethod
+    def register(cls, noise_type: NoiseType, generator_class: Type) -> None:
+        """
+        Register a new noise generator type.
+
+        Args:
+            noise_type: The noise type enum value.
+            generator_class: The generator class to register.
+        """
+        cls._generators[noise_type] = generator_class
+        if noise_type not in cls.IMPLEMENTED_TYPES:
+            cls.IMPLEMENTED_TYPES.append(noise_type)
+
+
+class NoiseParameters:
+    """Container for noise generation parameters."""
+
+    def __init__(
+        self,
+        noise_type: NoiseType = NoiseType.PERLIN,
+        seed: int = 0,
+        frequency: float = 0.01,
+        offset: tuple = (0.0, 0.0),
+        fractal_type: FractalType = FractalType.FBM,
+        octaves: int = 5,
+        lacunarity: float = 2.0,
+        persistence: float = 0.5,
+        weighted_strength: float = 0.0,
+        ping_pong_strength: float = 2.0
+    ):
+        """
+        Initialize noise parameters.
+
+        Args:
+            noise_type: Type of noise algorithm.
+            seed: Random seed.
+            frequency: Base frequency.
+            offset: Domain offset (x, y).
+            fractal_type: Type of fractal combination.
+            octaves: Number of octaves.
+            lacunarity: Frequency multiplier per octave.
+            persistence: Amplitude multiplier per octave.
+            weighted_strength: Octave weighting strength.
+            ping_pong_strength: Ping-pong effect strength.
+        """
+        self.noise_type = noise_type
+        self.seed = seed
+        self.frequency = frequency
+        self.offset = offset
+        self.fractal_type = fractal_type
+        self.octaves = octaves
+        self.lacunarity = lacunarity
+        self.persistence = persistence
+        self.weighted_strength = weighted_strength
+        self.ping_pong_strength = ping_pong_strength
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert parameters to dictionary."""
+        return {
+            'noise_type': self.noise_type,
+            'seed': self.seed,
+            'frequency': self.frequency,
+            'offset': self.offset,
+            'fractal_type': self.fractal_type,
+            'octaves': self.octaves,
+            'lacunarity': self.lacunarity,
+            'persistence': self.persistence,
+            'weighted_strength': self.weighted_strength,
+            'ping_pong_strength': self.ping_pong_strength,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'NoiseParameters':
+        """Create parameters from dictionary."""
+        return cls(**data)
+
+    def copy(self) -> 'NoiseParameters':
+        """Create a copy of the parameters."""
+        return NoiseParameters(**self.to_dict())
