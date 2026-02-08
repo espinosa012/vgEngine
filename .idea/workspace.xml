@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="" />
+    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="fisrt commit">
+      <change afterPath="$PROJECT_DIR$/src/my_prompts.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/vgnoise/simplexsmooth2d.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/vgnoise/value2d.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/vgnoise/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/vgnoise/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/vgnoise/kernels.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/vgnoise/kernels.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/vgnoise/noise2d.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/vgnoise/noise2d.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vgNoiseViewer/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/vgNoiseViewer/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vgNoiseViewer/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/vgNoiseViewer/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vgNoiseViewer/noise_factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/vgNoiseViewer/noise_factory.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -20,14 +31,24 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="FETCH_TAGS_MODE" value="NO_TAGS" />
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "git@github.com:espinosa012/vgNoise.git",
-    "accountId": "66b215f7-fe61-4b5d-989e-3184f4c29b8a"
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "espinosa012"
   }
 }]]></component>
+  <component name="GithubDefaultAccount">
+    <option name="defaultAccountId" value="66b215f7-fe61-4b5d-989e-3184f4c29b8a" />
+  </component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:espinosa012/vgNoise.git&quot;,
+    &quot;accountId&quot;: &quot;66b215f7-fe61-4b5d-989e-3184f4c29b8a&quot;
+  }
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 4
 }</component>
@@ -49,6 +70,7 @@
     "git-widget-placeholder": "main",
     "last_opened_file_path": "/home/deck/Documents/virigir/vgNoise",
     "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "vcs.Git",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -77,17 +99,38 @@
       <workItem from="1770477916332" duration="5597000" />
       <workItem from="1770483538352" duration="3546000" />
       <workItem from="1770543379963" duration="19000" />
-      <workItem from="1770544035121" duration="9975000" />
+      <workItem from="1770544035121" duration="13497000" />
     </task>
+    <task id="LOCAL-00001" summary="fisrt commit">
+      <option name="closed" value="true" />
+      <created>1770567519474</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1770567519474</updated>
+    </task>
+    <task id="LOCAL-00002" summary="fisrt commit">
+      <option name="closed" value="true" />
+      <created>1770568314438</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1770568314438</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="fisrt commit" />
+    <option name="LAST_COMMIT_MESSAGE" value="fisrt commit" />
+  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/vgNoise$test.coverage" NAME="test Coverage Results" MODIFIED="1770483482419" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/vgNoise$run_viewer.coverage" NAME="run_viewer Coverage Results" MODIFIED="1770544104725" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vgNoiseViewer" />
-    <SUITE FILE_PATH="coverage/vgNoise$app.coverage" NAME="app Coverage Results" MODIFIED="1770566472702" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vgNoiseViewer" />
+    <SUITE FILE_PATH="coverage/vgNoise$app.coverage" NAME="app Coverage Results" MODIFIED="1770570165168" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vgNoiseViewer" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>

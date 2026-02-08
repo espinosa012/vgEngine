@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
 from typing import Optional
 import numpy as np
 
@@ -134,6 +134,13 @@ class NoiseViewer:
         self.root.geometry(f"{self.config.width}x{self.config.height}")
         self.root.minsize(self.config.min_width, self.config.min_height)
         self.root.configure(bg=self.theme_colors.background)
+        # Maximize the window (cross-platform)
+        try:
+            # Windows
+            self.root.state('zoomed')
+        except tk.TclError:
+            # Linux/macOS - use attributes
+            self.root.attributes('-zoomed', True)
 
     def _build_ui(self) -> None:
         """Build the main UI layout."""
@@ -429,16 +436,40 @@ class NoiseViewer:
 
         ttk.Button(
             btn_frame,
-            text="🔄 Regenerate",
-            command=self.update_image,
+            text="🎲 Randomize All",
+            command=self._randomize_all,
             style="Accent.TButton"
         ).pack(fill=tk.X, pady=2)
 
         ttk.Button(
             btn_frame,
-            text="🎲 Random Seed",
+            text="🌱 Random Seed",
             command=self._randomize_seed,
             style="Accent.TButton"
+        ).pack(fill=tk.X, pady=2)
+
+        # File operations
+        file_frame = ttk.Frame(content, style="Card.TFrame")
+        file_frame.pack(fill=tk.X, pady=(10, 0))
+
+        ttk.Label(
+            file_frame,
+            text="Noise Preset",
+            style="Small.TLabel"
+        ).pack(anchor=tk.W)
+
+        ttk.Button(
+            file_frame,
+            text="💾 Save Noise Preset",
+            command=self._save_noise_preset,
+            style="TButton"
+        ).pack(fill=tk.X, pady=2)
+
+        ttk.Button(
+            file_frame,
+            text="📂 Load Noise Preset",
+            command=self._load_noise_preset,
+            style="TButton"
         ).pack(fill=tk.X, pady=2)
 
     def _get_noise_parameters(self) -> NoiseParameters:
@@ -459,7 +490,6 @@ class NoiseViewer:
             cellular_return_type=CellularReturnType[self.cellular_return_type.get()],
             cellular_jitter=self.cellular_jitter.get()
         )
-
     def _create_generator(self):
         """Create noise generator with current parameters."""
         params = self._get_noise_parameters()
@@ -488,6 +518,193 @@ class NoiseViewer:
         new_seed = np.random.randint(0, 999999)
         self.seed.set(new_seed)
         self.update_image()
+
+    def _randomize_all(self) -> None:
+        """Randomize all noise parameters and regenerate."""
+        # Temporarily disable updates
+        self._initializing = True
+
+        try:
+            # Seed
+            self.seed.set(np.random.randint(0, 999999))
+
+            # Noise type
+            noise_types = [t.name for t in NoiseGeneratorFactory.IMPLEMENTED_TYPES]
+            self.noise_type.set(np.random.choice(noise_types))
+
+            # Frequency (0.005 to 0.05 for useful range)
+            self.frequency.set(round(np.random.uniform(0.005, 0.05), 3))
+
+            # Offsets
+            self.offset_x.set(round(np.random.uniform(-1000, 1000), 0))
+            self.offset_y.set(round(np.random.uniform(-1000, 1000), 0))
+
+            # Fractal type
+            fractal_types = [t.name for t in FractalType]
+            self.fractal_type.set(np.random.choice(fractal_types))
+
+            # Octaves (1-8)
+            self.octaves.set(np.random.randint(1, 9))
+
+            # Lacunarity (1.5 to 3.0)
+            self.lacunarity.set(round(np.random.uniform(1.5, 3.0), 1))
+
+            # Persistence (0.3 to 0.7)
+            self.persistence.set(round(np.random.uniform(0.3, 0.7), 2))
+
+            # Weighted strength (0 to 0.5)
+            self.weighted_strength.set(round(np.random.uniform(0.0, 0.5), 2))
+
+            # Ping pong strength (1.0 to 3.0)
+            self.ping_pong_strength.set(round(np.random.uniform(1.0, 3.0), 1))
+
+            # Cellular parameters
+            dist_funcs = [t.name for t in CellularDistanceFunction]
+            self.cellular_distance_func.set(np.random.choice(dist_funcs))
+
+            return_types = [t.name for t in CellularReturnType]
+            self.cellular_return_type.set(np.random.choice(return_types))
+
+            # Jitter (0.5 to 1.0)
+            self.cellular_jitter.set(round(np.random.uniform(0.5, 1.0), 2))
+
+        finally:
+            self._initializing = False
+
+        # Update the image with new settings
+        self.update_image()
+
+    def _get_config_dict(self) -> dict:
+        """Get current noise configuration as a dictionary."""
+        return {
+            "noise_type": self.noise_type.get(),
+            "seed": self.seed.get(),
+            "frequency": self.frequency.get(),
+            "offset_x": self.offset_x.get(),
+            "offset_y": self.offset_y.get(),
+            "fractal_type": self.fractal_type.get(),
+            "octaves": self.octaves.get(),
+            "lacunarity": self.lacunarity.get(),
+            "persistence": self.persistence.get(),
+            "weighted_strength": self.weighted_strength.get(),
+            "ping_pong_strength": self.ping_pong_strength.get(),
+            "cellular_distance_function": self.cellular_distance_func.get(),
+            "cellular_return_type": self.cellular_return_type.get(),
+            "cellular_jitter": self.cellular_jitter.get(),
+        }
+
+    def _set_config_from_dict(self, config: dict) -> None:
+        """Set UI values from a configuration dictionary."""
+        # Temporarily disable updates
+        self._initializing = True
+
+        try:
+            # Set all values from config
+            if "noise_type" in config:
+                self.noise_type.set(config["noise_type"])
+            if "seed" in config:
+                self.seed.set(config["seed"])
+            if "frequency" in config:
+                self.frequency.set(config["frequency"])
+            if "offset_x" in config:
+                self.offset_x.set(config["offset_x"])
+            if "offset_y" in config:
+                self.offset_y.set(config["offset_y"])
+            if "fractal_type" in config:
+                self.fractal_type.set(config["fractal_type"])
+            if "octaves" in config:
+                self.octaves.set(config["octaves"])
+            if "lacunarity" in config:
+                self.lacunarity.set(config["lacunarity"])
+            if "persistence" in config:
+                self.persistence.set(config["persistence"])
+            if "weighted_strength" in config:
+                self.weighted_strength.set(config["weighted_strength"])
+            if "ping_pong_strength" in config:
+                self.ping_pong_strength.set(config["ping_pong_strength"])
+            if "cellular_distance_function" in config:
+                self.cellular_distance_func.set(config["cellular_distance_function"])
+            if "cellular_return_type" in config:
+                self.cellular_return_type.set(config["cellular_return_type"])
+            if "cellular_jitter" in config:
+                self.cellular_jitter.set(config["cellular_jitter"])
+        finally:
+            self._initializing = False
+
+        # Update the image with new settings
+        self.update_image()
+
+    def _save_noise_preset(self) -> None:
+        """Save current noise configuration to a JSON file."""
+        from vgnoise.noise2d import NoiseGenerator2D, NOISE_JSON_EXTENSION
+
+        filepath = filedialog.asksaveasfilename(
+            title="Save Noise Preset",
+            defaultextension=NOISE_JSON_EXTENSION,
+            filetypes=[
+                ("Noise Preset Files", f"*{NOISE_JSON_EXTENSION}"),
+                ("JSON Files", "*.json"),
+                ("All Files", "*.*")
+            ],
+            initialfile="noise_preset"
+        )
+
+        if not filepath:
+            return  # User cancelled
+
+        try:
+            # Create a NoiseGenerator2D with current config and save it
+            config = self._get_config_dict()
+            generator = NoiseGenerator2D(config=config)
+            generator.save_to_json(filepath)
+
+            messagebox.showinfo(
+                "Success",
+                f"Noise preset saved successfully to:\n{filepath}"
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Error",
+                f"Failed to save noise preset:\n{str(e)}"
+            )
+
+    def _load_noise_preset(self) -> None:
+        """Load noise configuration from a JSON file."""
+        from vgnoise.noise2d import NoiseGenerator2D, NOISE_JSON_EXTENSION
+
+        filepath = filedialog.askopenfilename(
+            title="Load Noise Preset",
+            filetypes=[
+                ("Noise Preset Files", f"*{NOISE_JSON_EXTENSION}"),
+                ("JSON Files", "*.json"),
+                ("All Files", "*.*")
+            ]
+        )
+
+        if not filepath:
+            return  # User cancelled
+
+        try:
+            # Load the noise generator from JSON
+            generator = NoiseGenerator2D.load_from_json(filepath)
+
+            # Apply the configuration to the UI
+            self._set_config_from_dict(generator.config)
+
+            messagebox.showinfo(
+                "Success",
+                f"Noise preset loaded successfully from:\n{filepath}"
+            )
+        except FileNotFoundError:
+            messagebox.showerror(
+                "Error",
+                f"File not found:\n{filepath}"
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Error",
+                f"Failed to load noise preset:\n{str(e)}"
+            )
 
     # Public properties for testing
     @property

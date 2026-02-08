@@ -179,14 +179,14 @@ IMAGE_PARAMETERS = ParameterGroup(
             label="Image Size",
             default=512,
             min_value=128,
-            max_value=1024,
+            max_value=4096,
             control_type="combobox"
         ),
     ]
 )
 
 # Available image sizes
-IMAGE_SIZES = [128, 256, 512, 1024]
+IMAGE_SIZES = [128, 256, 512, 1024, 2048, 4096]
 
 # Display configuration
-MAX_DISPLAY_SIZE = 512
+MAX_DISPLAY_SIZE = 768
