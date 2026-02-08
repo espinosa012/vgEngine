@@ -6,8 +6,8 @@ This module provides a factory for creating noise generators based on type.
 
 from typing import Dict, Any, Type
 
-from vgnoise import PerlinNoise2D, OpenSimplexNoise2D
-from vgnoise.enums import NoiseType, FractalType
+from vgnoise import PerlinNoise2D, OpenSimplexNoise2D, CellularNoise2D
+from vgnoise.enums import NoiseType, FractalType, CellularDistanceFunction, CellularReturnType
 
 
 class NoiseGeneratorFactory:
@@ -17,10 +17,11 @@ class NoiseGeneratorFactory:
     _generators: Dict[NoiseType, Type] = {
         NoiseType.PERLIN: PerlinNoise2D,
         NoiseType.SIMPLEX: OpenSimplexNoise2D,
+        NoiseType.CELLULAR: CellularNoise2D,
     }
 
     # Currently implemented noise types
-    IMPLEMENTED_TYPES = [NoiseType.PERLIN, NoiseType.SIMPLEX]
+    IMPLEMENTED_TYPES = [NoiseType.PERLIN, NoiseType.SIMPLEX, NoiseType.CELLULAR]
 
     @classmethod
     def create(cls, noise_type: NoiseType, **kwargs) -> Any:
@@ -57,18 +58,26 @@ class NoiseGeneratorFactory:
         Returns:
             A noise generator instance.
         """
-        return cls.create(
-            noise_type=params.noise_type,
-            frequency=params.frequency,
-            offset=params.offset,
-            fractal_type=params.fractal_type,
-            octaves=params.octaves,
-            lacunarity=params.lacunarity,
-            persistence=params.persistence,
-            weighted_strength=params.weighted_strength,
-            ping_pong_strength=params.ping_pong_strength,
-            seed=params.seed
-        )
+        # Base parameters for all noise types
+        base_kwargs = {
+            'frequency': params.frequency,
+            'offset': params.offset,
+            'fractal_type': params.fractal_type,
+            'octaves': params.octaves,
+            'lacunarity': params.lacunarity,
+            'persistence': params.persistence,
+            'weighted_strength': params.weighted_strength,
+            'ping_pong_strength': params.ping_pong_strength,
+            'seed': params.seed,
+        }
+
+        # Add cellular-specific parameters
+        if params.noise_type == NoiseType.CELLULAR:
+            base_kwargs['distance_function'] = params.cellular_distance_function
+            base_kwargs['return_type'] = params.cellular_return_type
+            base_kwargs['jitter'] = params.cellular_jitter
+
+        return cls.create(noise_type=params.noise_type, **base_kwargs)
 
     @classmethod
     def register(cls, noise_type: NoiseType, generator_class: Type) -> None:
@@ -98,7 +107,11 @@ class NoiseParameters:
         lacunarity: float = 2.0,
         persistence: float = 0.5,
         weighted_strength: float = 0.0,
-        ping_pong_strength: float = 2.0
+        ping_pong_strength: float = 2.0,
+        # Cellular-specific parameters
+        cellular_distance_function: CellularDistanceFunction = CellularDistanceFunction.EUCLIDEAN_SQUARED,
+        cellular_return_type: CellularReturnType = CellularReturnType.DISTANCE,
+        cellular_jitter: float = 1.0
     ):
         """
         Initialize noise parameters.
@@ -114,6 +127,9 @@ class NoiseParameters:
             persistence: Amplitude multiplier per octave.
             weighted_strength: Octave weighting strength.
             ping_pong_strength: Ping-pong effect strength.
+            cellular_distance_function: Distance function for cellular noise.
+            cellular_return_type: Return type for cellular noise.
+            cellular_jitter: Jitter amount for cellular noise feature points.
         """
         self.noise_type = noise_type
         self.seed = seed
@@ -125,6 +141,10 @@ class NoiseParameters:
         self.persistence = persistence
         self.weighted_strength = weighted_strength
         self.ping_pong_strength = ping_pong_strength
+        # Cellular-specific
+        self.cellular_distance_function = cellular_distance_function
+        self.cellular_return_type = cellular_return_type
+        self.cellular_jitter = cellular_jitter
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert parameters to dictionary."""
@@ -139,6 +159,9 @@ class NoiseParameters:
             'persistence': self.persistence,
             'weighted_strength': self.weighted_strength,
             'ping_pong_strength': self.ping_pong_strength,
+            'cellular_distance_function': self.cellular_distance_function,
+            'cellular_return_type': self.cellular_return_type,
+            'cellular_jitter': self.cellular_jitter,
         }
 
     @classmethod

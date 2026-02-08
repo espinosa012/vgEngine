@@ -13,6 +13,7 @@ from .enums import (
 from .noise2d import NoiseGenerator2D
 from .perlin2d import PerlinNoise2D
 from .opensimplex2d import OpenSimplexNoise2D
+from .cellular2d import CellularNoise2D
 
 __all__ = [
     # Base
@@ -27,4 +28,5 @@ __all__ = [
     "NoiseGenerator2D",
     "PerlinNoise2D",
     "OpenSimplexNoise2D",
+    "CellularNoise2D",
 ]

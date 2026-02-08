@@ -634,3 +634,355 @@ def opensimplex_single_2d(
 
     return result
 
+
+# =============================================================================
+# Cellular (Worley/Voronoi) 2D Kernels
+# =============================================================================
+
+# Cellular distance function constants
+CELLULAR_EUCLIDEAN = 0
+CELLULAR_EUCLIDEAN_SQUARED = 1
+CELLULAR_MANHATTAN = 2
+CELLULAR_HYBRID = 3
+
+# Cellular return type constants
+CELLULAR_CELL_VALUE = 0
+CELLULAR_DISTANCE = 1
+CELLULAR_DISTANCE_2 = 2
+CELLULAR_DISTANCE_2_ADD = 3
+CELLULAR_DISTANCE_2_SUB = 4
+CELLULAR_DISTANCE_2_MUL = 5
+CELLULAR_DISTANCE_2_DIV = 6
+
+
+@njit(fastmath=True, cache=True)
+def _cellular_hash_2d(seed: int, x: int, y: int) -> int:
+    """Hash function for cellular noise feature points."""
+    # FNV-1a inspired hash
+    h = seed
+    h ^= x
+    h *= 0x27d4eb2d
+    h ^= y
+    h *= 0x27d4eb2d
+    return h
+
+
+@njit(fastmath=True, cache=True)
+def _cellular_hash_to_float(hash_val: int) -> float:
+    """Convert hash to float in range [0, 1)."""
+    return (hash_val & 0x7fffffff) / 2147483648.0
+
+
+@njit(fastmath=True, cache=True)
+def _cellular_distance(
+    dx: float,
+    dy: float,
+    distance_func: int
+) -> float:
+    """Calculate distance based on distance function type."""
+    if distance_func == CELLULAR_EUCLIDEAN:
+        return np.sqrt(dx * dx + dy * dy)
+    elif distance_func == CELLULAR_EUCLIDEAN_SQUARED:
+        return dx * dx + dy * dy
+    elif distance_func == CELLULAR_MANHATTAN:
+        return abs(dx) + abs(dy)
+    else:  # CELLULAR_HYBRID
+        return abs(dx) + abs(dy) + (dx * dx + dy * dy)
+
+
+@njit(fastmath=True, cache=True)
+def _cellular_sample(
+    x: float,
+    y: float,
+    seed: int,
+    distance_func: int,
+    return_type: int,
+    jitter: float
+) -> float:
+    """
+    Sample cellular noise at a single point.
+
+    Returns value in range approximately [-1, 1] for most return types.
+    """
+    # Get cell coordinates
+    xr = int(np.floor(x))
+    yr = int(np.floor(y))
+
+    # Initialize distances
+    distance0 = 1e10  # Closest
+    distance1 = 1e10  # Second closest
+    closest_hash = 0
+
+    # Search 3x3 neighborhood
+    for xi in range(-1, 2):
+        for yi in range(-1, 2):
+            # Cell coordinates
+            cx = xr + xi
+            cy = yr + yi
+
+            # Hash for this cell
+            h = _cellular_hash_2d(seed, cx, cy)
+
+            # Feature point position within cell (jittered)
+            fx = cx + _cellular_hash_to_float(h) * jitter
+            h = _cellular_hash_2d(seed, h, cy)
+            fy = cy + _cellular_hash_to_float(h) * jitter
+
+            # Distance to feature point
+            dx = x - fx
+            dy = y - fy
+            d = _cellular_distance(dx, dy, distance_func)
+
+            # Update closest distances
+            if d < distance0:
+                distance1 = distance0
+                distance0 = d
+                closest_hash = h
+            elif d < distance1:
+                distance1 = d
+
+    # Calculate return value based on return type
+    if return_type == CELLULAR_CELL_VALUE:
+        return _cellular_hash_to_float(closest_hash) * 2.0 - 1.0
+    elif return_type == CELLULAR_DISTANCE:
+        return distance0
+    elif return_type == CELLULAR_DISTANCE_2:
+        return distance1
+    elif return_type == CELLULAR_DISTANCE_2_ADD:
+        return (distance0 + distance1) * 0.5
+    elif return_type == CELLULAR_DISTANCE_2_SUB:
+        return distance1 - distance0
+    elif return_type == CELLULAR_DISTANCE_2_MUL:
+        return distance0 * distance1
+    else:  # CELLULAR_DISTANCE_2_DIV
+        if distance1 > 1e-10:
+            return distance0 / distance1
+        return 0.0
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def cellular_single_2d(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    seed: int,
+    distance_func: int,
+    return_type: int,
+    jitter: float
+) -> NDArray[np.float64]:
+    """Generate single 2D cellular noise (no fractal)."""
+    n = len(x)
+    result = np.zeros(n, dtype=np.float64)
+
+    for i in prange(n):
+        val = _cellular_sample(x[i], y[i], seed, distance_func, return_type, jitter)
+        # Normalize to [0, 1] range
+        if return_type == CELLULAR_CELL_VALUE:
+            result[i] = (val + 1.0) * 0.5
+        elif return_type == CELLULAR_DISTANCE_2_SUB:
+            result[i] = min(1.0, max(0.0, val))
+        elif return_type in (CELLULAR_DISTANCE, CELLULAR_DISTANCE_2):
+            result[i] = min(1.0, max(0.0, val))
+        elif return_type == CELLULAR_DISTANCE_2_ADD:
+            result[i] = min(1.0, max(0.0, val))
+        elif return_type == CELLULAR_DISTANCE_2_MUL:
+            result[i] = min(1.0, max(0.0, val))
+        elif return_type == CELLULAR_DISTANCE_2_DIV:
+            result[i] = min(1.0, max(0.0, val))
+        else:
+            result[i] = min(1.0, max(0.0, (val + 1.0) * 0.5))
+
+    return result
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def cellular_fbm_2d(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    seed: int,
+    distance_func: int,
+    return_type: int,
+    jitter: float,
+    octaves: int,
+    lacunarity: float,
+    persistence: float,
+    fractal_bounding: float
+) -> NDArray[np.float64]:
+    """Generate 2D cellular FBM noise."""
+    n = len(x)
+    result = np.zeros(n, dtype=np.float64)
+
+    for i in prange(n):
+        xi = x[i]
+        yi = y[i]
+        total = 0.0
+        amp = 1.0
+
+        for octave in range(octaves):
+            # Use different seed per octave for variation
+            octave_seed = seed + octave * 1337
+            val = _cellular_sample(xi, yi, octave_seed, distance_func, return_type, jitter)
+
+            # Convert to [-1, 1] range for accumulation
+            if return_type == CELLULAR_CELL_VALUE:
+                noise = val
+            else:
+                noise = val * 2.0 - 1.0
+
+            total += noise * amp
+            amp *= persistence
+            xi *= lacunarity
+            yi *= lacunarity
+
+        # Normalize and clamp to [0, 1]
+        result[i] = min(1.0, max(0.0, total * fractal_bounding * 0.5 + 0.5))
+
+    return result
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def cellular_fbm_2d_weighted(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    seed: int,
+    distance_func: int,
+    return_type: int,
+    jitter: float,
+    octaves: int,
+    lacunarity: float,
+    persistence: float,
+    weighted_strength: float,
+    fractal_bounding: float
+) -> NDArray[np.float64]:
+    """Generate 2D cellular FBM noise with weighted strength."""
+    n = len(x)
+    result = np.zeros(n, dtype=np.float64)
+
+    for i in prange(n):
+        xi = x[i]
+        yi = y[i]
+        total = 0.0
+        amp = 1.0
+
+        for octave in range(octaves):
+            octave_seed = seed + octave * 1337
+            val = _cellular_sample(xi, yi, octave_seed, distance_func, return_type, jitter)
+
+            if return_type == CELLULAR_CELL_VALUE:
+                noise = val
+            else:
+                noise = val * 2.0 - 1.0
+
+            total += noise * amp
+            amp *= (1.0 - weighted_strength + weighted_strength * (noise + 1.0) * 0.5) * persistence
+            xi *= lacunarity
+            yi *= lacunarity
+
+        result[i] = min(1.0, max(0.0, total * fractal_bounding * 0.5 + 0.5))
+
+    return result
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def cellular_ridged_2d(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    seed: int,
+    distance_func: int,
+    return_type: int,
+    jitter: float,
+    octaves: int,
+    lacunarity: float,
+    persistence: float,
+    weighted_strength: float,
+    fractal_bounding: float
+) -> NDArray[np.float64]:
+    """Generate 2D cellular ridged multifractal noise."""
+    n = len(x)
+    result = np.zeros(n, dtype=np.float64)
+
+    for i in prange(n):
+        xi = x[i]
+        yi = y[i]
+        total = 0.0
+        amp = 1.0
+
+        for octave in range(octaves):
+            octave_seed = seed + octave * 1337
+            val = _cellular_sample(xi, yi, octave_seed, distance_func, return_type, jitter)
+
+            if return_type == CELLULAR_CELL_VALUE:
+                noise_raw = val
+            else:
+                noise_raw = val * 2.0 - 1.0
+
+            # Ridged: absolute value inverted
+            noise = 1.0 - abs(noise_raw)
+            total += noise * amp
+
+            if weighted_strength > 0:
+                amp *= (1.0 - weighted_strength + weighted_strength * noise) * persistence
+            else:
+                amp *= persistence
+
+            xi *= lacunarity
+            yi *= lacunarity
+
+        result[i] = min(1.0, max(0.0, total * fractal_bounding))
+
+    return result
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def cellular_pingpong_2d(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    seed: int,
+    distance_func: int,
+    return_type: int,
+    jitter: float,
+    octaves: int,
+    lacunarity: float,
+    persistence: float,
+    weighted_strength: float,
+    ping_pong_strength: float,
+    fractal_bounding: float
+) -> NDArray[np.float64]:
+    """Generate 2D cellular ping-pong fractal noise."""
+    n = len(x)
+    result = np.zeros(n, dtype=np.float64)
+
+    for i in prange(n):
+        xi = x[i]
+        yi = y[i]
+        total = 0.0
+        amp = 1.0
+
+        for octave in range(octaves):
+            octave_seed = seed + octave * 1337
+            val = _cellular_sample(xi, yi, octave_seed, distance_func, return_type, jitter)
+
+            if return_type == CELLULAR_CELL_VALUE:
+                noise_raw = val
+            else:
+                noise_raw = val * 2.0 - 1.0
+
+            # Ping-pong effect
+            pp_val = (noise_raw + 1.0) * ping_pong_strength
+            pp_val = pp_val - int(pp_val * 0.5) * 2
+            if pp_val >= 1.0:
+                pp_val = 2.0 - pp_val
+            noise = pp_val
+
+            total += (noise - 0.5) * 2.0 * amp
+
+            if weighted_strength > 0:
+                amp *= (1.0 - weighted_strength + weighted_strength * noise) * persistence
+            else:
+                amp *= persistence
+
+            xi *= lacunarity
+            yi *= lacunarity
+
+        result[i] = min(1.0, max(0.0, total * fractal_bounding * 0.5 + 0.5))
+
+    return result
