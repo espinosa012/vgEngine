@@ -14,7 +14,7 @@ A math library for Python including procedural noise generation, matrix operatio
 ## Installation
 
 ```bash
-pip install vgmath
+pip install virigir_utilities
 ```
 
 Or install from source:
