@@ -117,7 +117,7 @@ class Color:
         Returns:
             Tuple of (r, g, b).
         """
-        return (self.r, self.g, self.b)
+        return self.r, self.g, self.b
 
     def to_rgba(self) -> Tuple[int, int, int, int]:
         """
@@ -126,7 +126,7 @@ class Color:
         Returns:
             Tuple of (r, g, b, a).
         """
-        return (self.r, self.g, self.b, self.a)
+        return self.r, self.g, self.b, self.a
 
     def to_hex(self, include_alpha: bool = False) -> str:
         """
