@@ -3,6 +3,7 @@ VGTileMap class for managing tilemaps.
 """
 
 from typing import Tuple, List, Optional
+from .mapcell import MapCell
 
 
 class TileMapLayer:
@@ -12,7 +13,7 @@ class TileMapLayer:
     Attributes:
         width: Width of the layer in tiles.
         height: Height of the layer in tiles.
-        data: 2D list where each cell is (tileset_id, tile_id) or None.
+        data: 2D list of MapCell objects.
     """
 
     def __init__(self, width: int, height: int) -> None:
@@ -23,23 +24,23 @@ class TileMapLayer:
             width: Width of the layer in tiles.
             height: Height of the layer in tiles.
         """
-        self.width = width
-        self.height = height
-        # Each cell stores (tileset_id, tile_id) or None
-        self.data: List[List[Optional[Tuple[int, int]]]] = [
-            [None for _ in range(width)] for _ in range(height)
+        self.width: int = width
+        self.height: int = height
+        # Each cell is now a MapCell object
+        self.data: List[List[MapCell]] = [
+            [MapCell() for _ in range(self.width)] for _ in range(self.height)
         ]
 
-    def get_tile(self, x: int, y: int) -> Optional[Tuple[int, int]]:
+    def get_tile(self, x: int, y: int) -> Optional[MapCell]:
         """
-        Get the tile at the specified position.
+        Get the MapCell at the specified position.
 
         Args:
             x: X coordinate in tile units.
             y: Y coordinate in tile units.
 
         Returns:
-            Tuple of (tileset_id, tile_id) or None if empty/out of bounds.
+            MapCell object or None if out of bounds.
         """
         if 0 <= x < self.width and 0 <= y < self.height:
             return self.data[y][x]
@@ -58,13 +59,13 @@ class TileMapLayer:
         if 0 <= x < self.width and 0 <= y < self.height:
             if tile_id < 0:
                 # Negative tile_id means clear the cell
-                self.data[y][x] = None
+                self.data[y][x].clear()
             else:
-                self.data[y][x] = (tileset_id, tile_id)
+                self.data[y][x].set(tileset_id, tile_id)
 
     def clear(self) -> None:
-        """Clear all tiles in the layer (set to None)."""
-        self.data = [[None for _ in range(self.width)] for _ in range(self.height)]
+        """Clear all tiles in the layer (set to empty)."""
+        self.data = [[MapCell() for _ in range(self.width)] for _ in range(self.height)]
 
     def __repr__(self) -> str:
         """String representation of the layer."""
@@ -80,7 +81,7 @@ class TileMap:
         height: Height of the tilemap in tiles.
         tile_width: Width of each tile in pixels.
         tile_height: Height of each tile in pixels.
-        layers: List of 2D lists of tile IDs (one per layer).
+        layers: List of TileMapLayer objects.
     """
 
     def __init__(
@@ -105,31 +106,22 @@ class TileMap:
         self.height = height
         self.tile_width = tile_width
         self.tile_height = tile_height
-        # Each layer is now a TileMapLayer object
         self.layers: List[TileMapLayer] = []
 
         # Create initial layers
         for _ in range(num_layers):
             self.layers.append(TileMapLayer(width, height))
 
-    @property
-    def data(self) -> List[List[Optional[Tuple[int, int]]]]:
-        """
-        Get the first layer data (for backward compatibility).
-
-        Returns:
-            2D list of tiles from layer 0.
-        """
-        return self.layers[0].data if self.layers else []
 
     @property
     def num_layers(self) -> int:
         """Get the number of layers."""
         return len(self.layers)
 
-    def get_tile(self, x: int, y: int, layer: int = 0) -> Optional[Tuple[int, int]]:
+    # map cells
+    def get_tile(self, x: int, y: int, layer: int = 0) -> Optional[MapCell]:
         """
-        Get the tile at the specified position and layer.
+        Get the MapCell at the specified position and layer.
 
         Args:
             x: X coordinate in tile units.
@@ -137,28 +129,11 @@ class TileMap:
             layer: Layer index (default: 0).
 
         Returns:
-            Tuple of (tileset_id, tile_id) or None if empty/out of bounds.
+            MapCell object or None if out of bounds/invalid layer.
         """
         if 0 <= layer < len(self.layers):
             return self.layers[layer].get_tile(x, y)
         return None
-
-    def get_tile_id(self, x: int, y: int, layer: int = 0) -> int:
-        """
-        Get the tile ID at the specified position (for backward compatibility).
-
-        Args:
-            x: X coordinate in tile units.
-            y: Y coordinate in tile units.
-            layer: Layer index (default: 0).
-
-        Returns:
-            The tile ID at the position, or -1 if out of bounds or empty.
-        """
-        tile = self.get_tile(x, y, layer)
-        if tile is not None:
-            return tile[1]  # Return tile_id from (tileset_id, tile_id)
-        return -1
 
     def set_tile(self, x: int, y: int, tile_id: int, tileset_id: int = 0, layer: int = 0) -> None:
         """
@@ -210,7 +185,7 @@ class TileMap:
         if 0 <= layer < len(self.layers):
             self.layers[layer].clear()
 
-    def get_layer(self, layer: int) -> List[List[Optional[Tuple[int, int]]]]:
+    def get_layer(self, layer: int) -> List[List[MapCell]]:
         """
         Get a reference to a specific layer data.
 
@@ -218,7 +193,7 @@ class TileMap:
             layer: Layer index.
 
         Returns:
-            2D list of tiles (tileset_id, tile_id) or None for the layer, or empty list if invalid.
+            2D list of MapCell objects for the layer, or empty list if invalid.
         """
         if 0 <= layer < len(self.layers):
             return self.layers[layer].data

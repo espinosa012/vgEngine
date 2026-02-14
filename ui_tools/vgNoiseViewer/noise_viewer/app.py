@@ -8,7 +8,7 @@ with different noise generation parameters compatible with Godot's FastNoiseLite
 import sys
 from pathlib import Path
 
-# Add parent directory to path to import virigir_utilities
+# Add parent directory to path to import virigir_math_utilities
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import tkinter as tk

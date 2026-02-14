@@ -84,10 +84,9 @@ class TilemapCanvas(ttk.Frame):
         for layer_idx in range(self.tilemap.num_layers):
             for y in range(self.tilemap.height):
                 for x in range(self.tilemap.width):
-                    tile = self.tilemap.get_tile(x, y, layer=layer_idx)
-                    if tile is not None:  # tile is (tileset_id, tile_id) or None
-                        tileset_id, tile_id = tile
-                        self._draw_tile(x, y, tileset_id, tile_id)
+                    cell = self.tilemap.get_tile(x, y, layer=layer_idx)
+                    if cell is not None and not cell.is_empty:
+                        self._draw_tile(x, y, cell.tileset_id, cell.tile_id)
 
         # Draw grid
         self._draw_grid()

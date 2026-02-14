@@ -12,7 +12,7 @@ import inspect
 import sys
 from pathlib import Path
 
-# Add parent directory to path to import virigir_utilities
+# Add parent directory to path to import virigir_math_utilities
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from vgmath.matrix import Matrix2D
