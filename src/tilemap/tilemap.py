@@ -2,8 +2,7 @@
 VGTileMap class for managing tilemaps.
 """
 
-from typing import Tuple, Optional
-from .tile import Tile
+from typing import Tuple
 
 
 class VGTileMap:
@@ -15,7 +14,7 @@ class VGTileMap:
         height: Height of the tilemap in tiles.
         tile_width: Width of each tile in pixels.
         tile_height: Height of each tile in pixels.
-        data: 2D list of TileMapCell objects.
+        data: 2D list of tile IDs (integers).
     """
 
     def __init__(
@@ -38,34 +37,7 @@ class VGTileMap:
         self.height = height
         self.tile_width = tile_width
         self.tile_height = tile_height
-        self.data = [[Tile() for _ in range(width)] for _ in range(height)]
-
-    def get_tile(self, x: int, y: int) -> Optional[Tile]:
-        """
-        Get the tile cell at the specified position.
-
-        Args:
-            x: X coordinate in tile units.
-            y: Y coordinate in tile units.
-
-        Returns:
-            The Tile at the position, or None if out of bounds.
-        """
-        if 0 <= x < self.width and 0 <= y < self.height:
-            return self.data[y][x]
-        return None
-
-    def set_tile(self, x: int, y: int, tile_id: int) -> None:
-        """
-        Set the tile ID at the specified position.
-
-        Args:
-            x: X coordinate in tile units.
-            y: Y coordinate in tile units.
-            tile_id: The tile ID to set.
-        """
-        if 0 <= x < self.width and 0 <= y < self.height:
-            self.data[y][x].set_tile_id(tile_id)
+        self.data = [[0 for _ in range(width)] for _ in range(height)]
 
     def get_tile_id(self, x: int, y: int) -> int:
         """
@@ -78,8 +50,21 @@ class VGTileMap:
         Returns:
             The tile ID at the position, or -1 if out of bounds.
         """
-        cell = self.get_tile(x, y)
-        return cell.get_tile_id() if cell else -1
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.data[y][x]
+        return -1
+
+    def set_tile(self, x: int, y: int, tile_id: int) -> None:
+        """
+        Set the tile ID at the specified position.
+
+        Args:
+            x: X coordinate in tile units.
+            y: Y coordinate in tile units.
+            tile_id: The tile ID to set.
+        """
+        if 0 <= x < self.width and 0 <= y < self.height:
+            self.data[y][x] = tile_id
 
     def get_size(self) -> Tuple[int, int]:
         """

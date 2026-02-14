@@ -69,9 +69,9 @@ class TilemapCanvas(ttk.Frame):
         # Render each tile
         for y in range(self.tilemap.height):
             for x in range(self.tilemap.width):
-                tile = self.tilemap.get_tile(x, y)
-                if tile and tile.tile_id >= 0:
-                    self._draw_tile(x, y, tile.tile_id)
+                tile_id = self.tilemap.get_tile_id(x, y)
+                if tile_id >= 0:
+                    self._draw_tile(x, y, tile_id)
         # Draw grid
         self._draw_grid()
         # Update canvas
