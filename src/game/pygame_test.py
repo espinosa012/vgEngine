@@ -14,8 +14,10 @@ Este script demuestra las funcionalidades básicas de pygame:
 import sys
 import pygame
 
-# Importar nuestra clase Color
+# Importar nuestras clases
 from core.color.color import Color
+from core.tilemap.tilemap import TileMap
+from core.tilemap.tileset import TileSet
 
 
 # Constantes
@@ -40,11 +42,13 @@ class BaseGameApp:
     def __init__(self):
         """Inicializa Pygame y crea la ventana."""
         # Inicializar Pygame
+        self.tileset = None
+        self.tilemap = None
         pygame.init()
 
         # Crear ventana
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Pygame Test - vgNoise")
+        pygame.display.set_caption("TileMap Render Test - vgNoise")
 
         # Reloj para controlar FPS
         self.clock = pygame.time.Clock()
@@ -58,8 +62,97 @@ class BaseGameApp:
         self.square_y = 100
         self.square_speed = 5
 
+        # Crear tilemap de prueba con tileset grayscale
+        self.setup_tilemap()
+
         print("✓ Pygame inicializado correctamente")
         print(f"✓ Ventana creada: {WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+
+    def setup_tilemap(self):
+        """Configura el tilemap de prueba con tileset grayscale."""
+        # Generar tileset grayscale de 32 colores
+        print("Generando tileset grayscale de 32 colores...")
+        self.tileset = TileSet.generate_grayscale_tileset(
+            nsteps=32,
+            tile_width=32,
+            tile_height=32,
+            columns=8,
+            output_path="grayscale_tileset_32.png"
+        )
+        print(f"✓ Tileset generado: {self.tileset}")
+
+        # Crear tilemap de 20x15 tiles
+        self.tilemap = TileMap(
+            width=20,
+            height=15,
+            tile_width=32,
+            tile_height=32,
+            num_layers=1
+        )
+
+        # Registrar tileset en el tilemap
+        self.tilemap.register_tileset(0, self.tileset)
+
+        # Llenar el tilemap con un patrón de prueba
+        for y in range(self.tilemap.height):
+            for x in range(self.tilemap.width):
+                # Crear un patrón interesante usando los tiles
+                # Patrón de tablero de ajedrez con gradientes
+                if (x + y) % 2 == 0:
+                    tile_id = (x + y) % 32
+                else:
+                    tile_id = (31 - ((x + y) % 32))
+
+                self.tilemap.set_tile(x, y, 0, tile_id, layer=0)
+
+        print(f"✓ Tilemap creado: {self.tilemap.width}x{self.tilemap.height} tiles")
+
+    def render_tilemap(self, camera_x: int = 0, camera_y: int = 0):
+        """
+        Renderiza el tilemap en la pantalla usando sistema de chunks.
+
+        Args:
+            camera_x: Offset X de la cámara en píxeles.
+            camera_y: Offset Y de la cámara en píxeles.
+        """
+        if not self.tilemap or not self.tileset:
+            return
+
+        # Calcular qué tiles son visibles
+        start_tile_x = max(0, camera_x // self.tilemap.tile_width)
+        start_tile_y = max(0, camera_y // self.tilemap.tile_height)
+        end_tile_x = min(self.tilemap.width, (camera_x + WINDOW_WIDTH) // self.tilemap.tile_width + 1)
+        end_tile_y = min(self.tilemap.height, (camera_y + WINDOW_HEIGHT) // self.tilemap.tile_height + 1)
+
+        # Renderizar cada capa
+        for layer_idx in range(self.tilemap.num_layers):
+            layer = self.tilemap.layers[layer_idx]
+
+            # Obtener chunks en el área visible (optimización)
+            chunks_in_view = self.tilemap.get_chunks_in_area(
+                start_tile_x, start_tile_y, end_tile_x, end_tile_y, layer_idx
+            )
+
+            # Renderizar solo los tiles visibles
+            for tile_y in range(start_tile_y, end_tile_y):
+                for tile_x in range(start_tile_x, end_tile_x):
+                    cell = layer.get_tile(tile_x, tile_y)
+                    if cell and not cell.is_empty:
+                        tileset_id = cell.tileset_id
+                        tile_id = cell.tile_id
+
+                        # Obtener tileset
+                        tileset = self.tilemap.tilesets.get(tileset_id)
+                        if tileset and tileset.surface:
+                            # Obtener surface del tile
+                            tile_surface = tileset.get_tile_surface(tile_id)
+                            if tile_surface:
+                                # Calcular posición en pantalla
+                                screen_x = tile_x * self.tilemap.tile_width - camera_x
+                                screen_y = tile_y * self.tilemap.tile_height - camera_y
+
+                                # Dibujar tile
+                                self.screen.blit(tile_surface, (screen_x, screen_y))
 
     def handle_events(self):
         """Maneja eventos de teclado y ratón."""
@@ -95,55 +188,34 @@ class BaseGameApp:
         self.frame_count += 1
 
     def draw(self):
-        """Dibuja todo en la pantalla."""
+        """Dibuja toda la info en la pantalla."""
         # Limpiar pantalla con color negro
         self.screen.fill(BLACK.to_rgb())
 
+        # Renderizar tilemap
+        self.render_tilemap(camera_x=0, camera_y=0)
+
         # Dibujar título
         font_large = pygame.font.Font(None, 48)
-        title = font_large.render("Pygame Test", True, WHITE.to_rgb())
-        self.screen.blit(title, (WINDOW_WIDTH // 2 - title.get_width() // 2, 30))
+        title = font_large.render("TileMap Test", True, WHITE.to_rgb())
+        self.screen.blit(title, (WINDOW_WIDTH // 2 - title.get_width() // 2, 10))
 
-        # Dibujar instrucciones
-        font_small = pygame.font.Font(None, 24)
-        instructions = [
-            "Controles:",
-            "- Flechas o WASD: Mover cuadrado rojo",
-            "- SPACE: Mensaje en consola",
-            "- ESC: Salir",
+        # Dibujar info
+        font_small = pygame.font.Font(None, 20)
+        active_chunks = len(self.tilemap.get_active_chunks(layer=0))
+        info_texts = [
+            f"TileMap: {self.tilemap.width}x{self.tilemap.height} tiles",
+            f"TileSet: {self.tileset.columns}x{self.tileset.rows} (32 colors)",
+            f"Chunk size: {self.tilemap.chunk_size}x{self.tilemap.chunk_size}",
+            f"Active chunks: {active_chunks}",
+            f"FPS: {int(self.clock.get_fps())}",
         ]
 
-        y_offset = 100
-        for text in instructions:
+        y_offset = WINDOW_HEIGHT - 115
+        for text in info_texts:
             surface = font_small.render(text, True, CYAN.to_rgb())
-            self.screen.blit(surface, (50, y_offset))
-            y_offset += 30
-
-        # Dibujar FPS
-        fps_text = font_small.render(f"FPS: {int(self.clock.get_fps())}", True, GREEN.to_rgb())
-        self.screen.blit(fps_text, (WINDOW_WIDTH - 100, 20))
-
-        # Dibujar frame count
-        frame_text = font_small.render(f"Frame: {self.frame_count}", True, GREEN.to_rgb())
-        self.screen.blit(frame_text, (WINDOW_WIDTH - 150, 50))
-
-        # Dibujar cuadrado móvil (rojo)
-        pygame.draw.rect(self.screen, RED.to_rgb(), (self.square_x, self.square_y, 50, 50))
-
-        # Dibujar borde alrededor del cuadrado
-        pygame.draw.rect(self.screen, YELLOW.to_rgb(), (self.square_x, self.square_y, 50, 50), 2)
-
-        # Dibujar formas decorativas
-        # Círculo azul
-        pygame.draw.circle(self.screen, BLUE.to_rgb(), (WINDOW_WIDTH - 100, WINDOW_HEIGHT - 100), 40)
-
-        # Líneas de colores
-        pygame.draw.line(self.screen, RED.to_rgb(), (50, WINDOW_HEIGHT - 50), (250, WINDOW_HEIGHT - 50), 3)
-        pygame.draw.line(self.screen, GREEN.to_rgb(), (50, WINDOW_HEIGHT - 40), (250, WINDOW_HEIGHT - 40), 3)
-        pygame.draw.line(self.screen, BLUE.to_rgb(), (50, WINDOW_HEIGHT - 30), (250, WINDOW_HEIGHT - 30), 3)
-
-        # Rectángulo con transparencia simulada (borde)
-        pygame.draw.rect(self.screen, MAGENTA.to_rgb(), (300, WINDOW_HEIGHT - 120, 100, 80), 2)
+            self.screen.blit(surface, (10, y_offset))
+            y_offset += 22
 
         # Actualizar pantalla
         pygame.display.flip()
@@ -151,11 +223,9 @@ class BaseGameApp:
     def run(self):
         """Loop principal del juego."""
         print("\n" + "=" * 60)
-        print("PYGAME TEST - LOOP INICIADO")
+        print("TILEMAP RENDER TEST - LOOP INICIADO")
         print("=" * 60)
         print("Controles:")
-        print("  - Flechas o WASD: Mover cuadrado")
-        print("  - SPACE: Mensaje de prueba")
         print("  - ESC o X: Cerrar ventana")
         print("=" * 60 + "\n")
 
@@ -175,6 +245,23 @@ class BaseGameApp:
         # Cerrar Pygame
         pygame.quit()
         print("\n✓ Pygame cerrado correctamente")
+
+        # Limpiar archivo de tileset temporal
+        self._cleanup()
+
+    def _cleanup(self):
+        """Limpia archivos temporales."""
+        import os
+        from pathlib import Path
+
+        if hasattr(self, 'tileset') and self.tileset.image_path:
+            tileset_path = Path(self.tileset.image_path)
+            if tileset_path.exists():
+                try:
+                    os.remove(tileset_path)
+                    print(f"✓ Archivo temporal eliminado: {tileset_path.name}")
+                except:
+                    pass
 
     def __del__(self):
         """Asegura que Pygame se cierre correctamente."""

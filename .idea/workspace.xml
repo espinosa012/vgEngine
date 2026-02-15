@@ -1,38 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="map cell">
-      <change afterPath="$PROJECT_DIR$/src/core/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/core/base/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/core/base/game_object.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/core/character/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/core/character/base.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/game/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/game/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/game/install_pygame.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/game/pygame_test.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/game/run_test.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/world/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/world/biome/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/world/entity/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/world/generation/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/world/generation/elevation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/vgworld/world/world.py" afterDir="false" />
+    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="pygame inclusion">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/color/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/color/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/color/color.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/color/color.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tilemap/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/tilemap/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tilemap/mapcell.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/tilemap/mapcell.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tilemap/tilemap.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/tilemap/tilemap.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tilemap/tileset.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/tilemap/tileset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/README_TILEMAP_EDITOR.md" beforeDir="false" afterPath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/README_TILEMAP_EDITOR.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/run_tilemap_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/run_tilemap_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/tilemap_canvas.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/tilemap_canvas.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/tileset_panel.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui_tools/vgNoiseViewer/tilemap_editor/tileset_panel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/tilemap/tilemap.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/tilemap/tilemap.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/tilemap/tileset.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/tilemap/tileset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/game/pygame_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/game/pygame_test.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,31 +58,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.matrix_app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.noise_dialog.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_matrix_editor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_noise_viewer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_tilemap_editor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_viewer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.tilemap_canvas.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/deck/Documents/virigir/vgNoise&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.Unnamed.executor": "Run",
+    "Python.app.executor": "Run",
+    "Python.matrix_app.executor": "Run",
+    "Python.noise_dialog.executor": "Run",
+    "Python.pygame_test.executor": "Run",
+    "Python.run_matrix_editor.executor": "Run",
+    "Python.run_noise_viewer.executor": "Run",
+    "Python.run_tilemap_editor.executor": "Run",
+    "Python.run_viewer.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.tilemap_canvas.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/home/deck/Documents/virigir/vgNoise",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/core/base" />
@@ -175,7 +150,7 @@
       <workItem from="1771001338805" duration="1962000" />
       <workItem from="1771077297414" duration="12000" />
       <workItem from="1771079818452" duration="18544000" />
-      <workItem from="1771175404152" duration="1694000" />
+      <workItem from="1771175404152" duration="4254000" />
     </task>
     <task id="LOCAL-00001" summary="fisrt commit">
       <option name="closed" value="true" />
@@ -297,7 +272,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771093030989</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="pygame inclusion">
+      <option name="closed" value="true" />
+      <created>1771177340389</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1771177340389</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -315,10 +298,12 @@
     <MESSAGE value="handling transparences" />
     <MESSAGE value="tilemaplayer entity" />
     <MESSAGE value="map cell" />
-    <option name="LAST_COMMIT_MESSAGE" value="map cell" />
+    <MESSAGE value="pygame inclusion" />
+    <option name="LAST_COMMIT_MESSAGE" value="pygame inclusion" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/vgNoise$run_tilemap_editor.coverage" NAME="run_tilemap_editor Coverage Results" MODIFIED="1771093416577" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ui_tools/vgNoiseViewer" />
+    <SUITE FILE_PATH="coverage/vgNoise$pygame_test.coverage" NAME="pygame_test Coverage Results" MODIFIED="1771177238357" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/game" />
     <SUITE FILE_PATH="coverage/vgNoise$test.coverage" NAME="test Coverage Results" MODIFIED="1770483482419" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/vgNoise$run_viewer.coverage" NAME="run_viewer Coverage Results" MODIFIED="1770544104725" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vgNoiseViewer" />
     <SUITE FILE_PATH="coverage/vgNoise$run_noise_viewer.coverage" NAME="run_noise_viewer Coverage Results" MODIFIED="1770578394446" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vgNoiseViewer" />

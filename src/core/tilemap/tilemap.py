@@ -1,5 +1,5 @@
 """
-VGTileMap class for managing tilemaps.
+VGTileMap class for managing tilemaps with chunk support.
 """
 
 from typing import Tuple, List, Optional, Dict
@@ -7,30 +7,133 @@ from .mapcell import MapCell
 from .tileset import TileSet
 
 
+class TileMapChunk:
+    """
+    Represents a chunk of tiles in a tilemap layer.
+
+    Attributes:
+        chunk_x: X coordinate of the chunk in chunk units.
+        chunk_y: Y coordinate of the chunk in chunk units.
+        chunk_size: Size of the chunk (width and height in tiles).
+        data: 2D list of MapCell objects for this chunk.
+    """
+
+    def __init__(self, chunk_x: int, chunk_y: int, chunk_size: int) -> None:
+        """
+        Initialize a tilemap chunk.
+
+        Args:
+            chunk_x: X coordinate of the chunk in chunk units.
+            chunk_y: Y coordinate of the chunk in chunk units.
+            chunk_size: Size of the chunk (width and height in tiles).
+        """
+        self.chunk_x = chunk_x
+        self.chunk_y = chunk_y
+        self.chunk_size = chunk_size
+        self.data: List[List[MapCell]] = [
+            [MapCell() for _ in range(chunk_size)] for _ in range(chunk_size)
+        ]
+
+    def get_tile(self, local_x: int, local_y: int) -> Optional[MapCell]:
+        """
+        Get tile at local position within the chunk.
+
+        Args:
+            local_x: X coordinate within chunk (0 to chunk_size-1).
+            local_y: Y coordinate within chunk (0 to chunk_size-1).
+
+        Returns:
+            MapCell object or None if out of bounds.
+        """
+        if 0 <= local_x < self.chunk_size and 0 <= local_y < self.chunk_size:
+            return self.data[local_y][local_x]
+        return None
+
+    def set_tile(self, local_x: int, local_y: int, tileset_id: int, tile_id: int) -> None:
+        """
+        Set tile at local position within the chunk.
+
+        Args:
+            local_x: X coordinate within chunk.
+            local_y: Y coordinate within chunk.
+            tileset_id: The tileset ID.
+            tile_id: The tile ID.
+        """
+        if 0 <= local_x < self.chunk_size and 0 <= local_y < self.chunk_size:
+            if tile_id < 0:
+                self.data[local_y][local_x].clear()
+            else:
+                self.data[local_y][local_x].set(tileset_id, tile_id)
+
+    def is_empty(self) -> bool:
+        """Check if all cells in the chunk are empty."""
+        for row in self.data:
+            for cell in row:
+                if not cell.is_empty:
+                    return False
+        return True
+
+    def __repr__(self) -> str:
+        return f"TileMapChunk(pos=({self.chunk_x}, {self.chunk_y}), size={self.chunk_size})"
+
+
 class TileMapLayer:
     """
-    Represents a single layer in a tilemap.
+    Represents a single layer in a tilemap with chunk-based storage.
 
     Attributes:
         width: Width of the layer in tiles.
         height: Height of the layer in tiles.
-        data: 2D list of MapCell objects.
+        chunk_size: Size of each chunk in tiles (default: 16).
+        chunks: Dictionary of chunks, keyed by (chunk_x, chunk_y).
     """
 
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, width: int, height: int, chunk_size: int = 16) -> None:
         """
-        Initialize a tilemap layer.
+        Initialize a tilemap layer with chunk support.
 
         Args:
             width: Width of the layer in tiles.
             height: Height of the layer in tiles.
+            chunk_size: Size of each chunk in tiles (default: 16).
         """
         self.width: int = width
         self.height: int = height
-        # Each cell is now a MapCell object
-        self.data: List[List[MapCell]] = [
-            [MapCell() for _ in range(self.width)] for _ in range(self.height)
-        ]
+        self.chunk_size: int = chunk_size
+        self.chunks: Dict[Tuple[int, int], TileMapChunk] = {}
+
+    def _get_chunk_coords(self, x: int, y: int) -> Tuple[int, int, int, int]:
+        """
+        Get chunk coordinates and local coordinates for a tile position.
+
+        Args:
+            x: X coordinate in tile units.
+            y: Y coordinate in tile units.
+
+        Returns:
+            Tuple of (chunk_x, chunk_y, local_x, local_y).
+        """
+        chunk_x = x // self.chunk_size
+        chunk_y = y // self.chunk_size
+        local_x = x % self.chunk_size
+        local_y = y % self.chunk_size
+        return chunk_x, chunk_y, local_x, local_y
+
+    def _get_or_create_chunk(self, chunk_x: int, chunk_y: int) -> TileMapChunk:
+        """
+        Get existing chunk or create a new one.
+
+        Args:
+            chunk_x: X coordinate of the chunk.
+            chunk_y: Y coordinate of the chunk.
+
+        Returns:
+            TileMapChunk object.
+        """
+        chunk_key = (chunk_x, chunk_y)
+        if chunk_key not in self.chunks:
+            self.chunks[chunk_key] = TileMapChunk(chunk_x, chunk_y, self.chunk_size)
+        return self.chunks[chunk_key]
 
     def get_tile(self, x: int, y: int) -> Optional[MapCell]:
         """
@@ -43,9 +146,17 @@ class TileMapLayer:
         Returns:
             MapCell object or None if out of bounds.
         """
-        if 0 <= x < self.width and 0 <= y < self.height:
-            return self.data[y][x]
-        return None
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return None
+
+        chunk_x, chunk_y, local_x, local_y = self._get_chunk_coords(x, y)
+        chunk_key = (chunk_x, chunk_y)
+
+        # Return empty cell if chunk doesn't exist
+        if chunk_key not in self.chunks:
+            return MapCell()
+
+        return self.chunks[chunk_key].get_tile(local_x, local_y)
 
     def set_tile(self, x: int, y: int, tileset_id: int, tile_id: int) -> None:
         """
@@ -57,31 +168,60 @@ class TileMapLayer:
             tileset_id: The tileset ID.
             tile_id: The tile ID.
         """
-        if 0 <= x < self.width and 0 <= y < self.height:
-            if tile_id < 0:
-                # Negative tile_id means clear the cell
-                self.data[y][x].clear()
-            else:
-                self.data[y][x].set(tileset_id, tile_id)
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return
+
+        chunk_x, chunk_y, local_x, local_y = self._get_chunk_coords(x, y)
+        chunk = self._get_or_create_chunk(chunk_x, chunk_y)
+        chunk.set_tile(local_x, local_y, tileset_id, tile_id)
+
+        # Remove chunk if it becomes empty (memory optimization)
+        if chunk.is_empty():
+            chunk_key = (chunk_x, chunk_y)
+            if chunk_key in self.chunks:
+                del self.chunks[chunk_key]
 
     def clear(self) -> None:
-        """Clear all tiles in the layer (set to empty)."""
-        self.data = [[MapCell() for _ in range(self.width)] for _ in range(self.height)]
+        """Clear all tiles in the layer by removing all chunks."""
+        self.chunks.clear()
+
+    def get_active_chunks(self) -> List[Tuple[int, int]]:
+        """
+        Get list of coordinates of all active (non-empty) chunks.
+
+        Returns:
+            List of (chunk_x, chunk_y) tuples.
+        """
+        return list(self.chunks.keys())
+
+    def get_chunk(self, chunk_x: int, chunk_y: int) -> Optional[TileMapChunk]:
+        """
+        Get a specific chunk.
+
+        Args:
+            chunk_x: X coordinate of the chunk.
+            chunk_y: Y coordinate of the chunk.
+
+        Returns:
+            TileMapChunk or None if chunk doesn't exist.
+        """
+        return self.chunks.get((chunk_x, chunk_y))
 
     def __repr__(self) -> str:
         """String representation of the layer."""
-        return f"TileMapLayer(width={self.width}, height={self.height})"
+        return f"TileMapLayer(width={self.width}, height={self.height}, chunk_size={self.chunk_size}, chunks={len(self.chunks)})"
 
 
 class TileMap:
     """
-    Simple tilemap class for managing tile grids with layer support.
+    Simple tilemap class for managing tile grids with layer and chunk support.
 
     Attributes:
         width: Width of the tilemap in tiles.
         height: Height of the tilemap in tiles.
         tile_width: Width of each tile in pixels.
         tile_height: Height of each tile in pixels.
+        chunk_size: Size of each chunk in tiles.
         layers: List of TileMapLayer objects.
         tilesets: Dictionary of TileSet objects indexed by tileset_id.
     """
@@ -92,10 +232,11 @@ class TileMap:
         height: int,
         tile_width: int = 32,
         tile_height: int = 32,
-        num_layers: int = 1
+        num_layers: int = 1,
+        chunk_size: int = 16
     ) -> None:
         """
-        Initialize the tilemap.
+        Initialize the tilemap with chunk support.
 
         Args:
             width: Width of the tilemap in tiles.
@@ -103,17 +244,19 @@ class TileMap:
             tile_width: Width of each tile in pixels (default: 32).
             tile_height: Height of each tile in pixels (default: 32).
             num_layers: Number of layers (default: 1).
+            chunk_size: Size of each chunk in tiles (default: 16).
         """
         self.width = width
         self.height = height
         self.tile_width = tile_width
         self.tile_height = tile_height
+        self.chunk_size = chunk_size
         self.layers: List[TileMapLayer] = []
         self.tilesets: Dict[int, TileSet] = {}  # tileset_id -> TileSet
 
-        # Create initial layers
+        # Create initial layers with chunk support
         for _ in range(num_layers):
-            self.layers.append(TileMapLayer(width, height))
+            self.layers.append(TileMapLayer(width, height, chunk_size))
 
 
     @property
@@ -160,7 +303,7 @@ class TileMap:
         Returns:
             Index of the new layer.
         """
-        self.layers.append(TileMapLayer(self.width, self.height))
+        self.layers.append(TileMapLayer(self.width, self.height, self.chunk_size))
         return len(self.layers) - 1
 
     def remove_layer(self, layer: int) -> bool:
@@ -180,7 +323,7 @@ class TileMap:
 
     def clear_layer(self, layer: int = 0) -> None:
         """
-        Clear all tiles in a layer (set to None/empty).
+        Clear all tiles in a layer (removes all chunks).
 
         Args:
             layer: Layer index to clear (default: 0).
@@ -188,19 +331,85 @@ class TileMap:
         if 0 <= layer < len(self.layers):
             self.layers[layer].clear()
 
-    def get_layer(self, layer: int) -> List[List[MapCell]]:
+    def get_active_chunks(self, layer: int = 0) -> List[Tuple[int, int]]:
         """
-        Get a reference to a specific layer data.
+        Get list of active chunk coordinates for a specific layer.
 
         Args:
-            layer: Layer index.
+            layer: Layer index (default: 0).
 
         Returns:
-            2D list of MapCell objects for the layer, or empty list if invalid.
+            List of (chunk_x, chunk_y) tuples.
         """
         if 0 <= layer < len(self.layers):
-            return self.layers[layer].data
+            return self.layers[layer].get_active_chunks()
         return []
+
+    def get_chunk(self, chunk_x: int, chunk_y: int, layer: int = 0) -> Optional[TileMapChunk]:
+        """
+        Get a specific chunk from a layer.
+
+        Args:
+            chunk_x: X coordinate of the chunk.
+            chunk_y: Y coordinate of the chunk.
+            layer: Layer index (default: 0).
+
+        Returns:
+            TileMapChunk or None if not found.
+        """
+        if 0 <= layer < len(self.layers):
+            return self.layers[layer].get_chunk(chunk_x, chunk_y)
+        return None
+
+    def get_chunk_size(self) -> int:
+        """
+        Get the chunk size used by this tilemap.
+
+        Returns:
+            Chunk size in tiles.
+        """
+        return self.chunk_size
+
+    def get_chunks_in_area(
+        self,
+        start_x: int,
+        start_y: int,
+        end_x: int,
+        end_y: int,
+        layer: int = 0
+    ) -> List[Tuple[int, int]]:
+        """
+        Get all chunks that intersect with a given tile area.
+
+        Args:
+            start_x: Start X coordinate in tiles.
+            start_y: Start Y coordinate in tiles.
+            end_x: End X coordinate in tiles.
+            end_y: End Y coordinate in tiles.
+            layer: Layer index (default: 0).
+
+        Returns:
+            List of (chunk_x, chunk_y) tuples that intersect the area.
+        """
+        if not (0 <= layer < len(self.layers)):
+            return []
+
+        # Calculate chunk bounds
+        start_chunk_x = start_x // self.chunk_size
+        start_chunk_y = start_y // self.chunk_size
+        end_chunk_x = end_x // self.chunk_size
+        end_chunk_y = end_y // self.chunk_size
+
+        # Get active chunks in the area
+        active_chunks = self.layers[layer].get_active_chunks()
+        chunks_in_area = []
+
+        for chunk_x, chunk_y in active_chunks:
+            if (start_chunk_x <= chunk_x <= end_chunk_x and
+                start_chunk_y <= chunk_y <= end_chunk_y):
+                chunks_in_area.append((chunk_x, chunk_y))
+
+        return chunks_in_area
 
     # tilesets
     def add_tileset(self, tileset_id: int, tileset: TileSet) -> None:
@@ -286,6 +495,9 @@ class TileMap:
 
     def __repr__(self) -> str:
         """String representation of the tilemap."""
-        return (f"VGTileMap(width={self.width}, height={self.height}, "
-                f"tile_size=({self.tile_width}x{self.tile_height}), layers={len(self.layers)})")
+        total_chunks = sum(len(layer.chunks) for layer in self.layers)
+        return (f"TileMap(width={self.width}, height={self.height}, "
+                f"tile_size={self.tile_width}x{self.tile_height}, "
+                f"layers={len(self.layers)}, chunk_size={self.chunk_size}, "
+                f"active_chunks={total_chunks})")
 

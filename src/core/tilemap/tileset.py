@@ -1,15 +1,19 @@
 """
 TileSet class for managing tile collections for tilemaps.
+
+Uses pygame for image handling and rendering. Compatible with pygame-based
+game engines while maintaining compatibility with other systems through
+the image_path attribute.
 """
 
 from typing import Optional, Tuple, List
 from pathlib import Path
 
 try:
-    from PIL import Image
-    HAS_PIL = True
+    import pygame
+    HAS_PYGAME = True
 except ImportError:
-    HAS_PIL = False
+    HAS_PYGAME = False
 
 # Import Color class for tileset generation
 try:
@@ -29,6 +33,7 @@ class TileSet:
         columns: Number of columns in the tileset.
         rows: Number of rows in the tileset.
         image_path: Path to the tileset image file.
+        surface: Pygame surface containing the tileset image.
     """
 
     def __init__(self, tile_width: int = 32, tile_height: int = 32) -> None:
@@ -44,6 +49,7 @@ class TileSet:
         self.columns = 0
         self.rows = 0
         self.image_path: Optional[str] = None
+        self.surface: Optional['pygame.Surface'] = None
 
     def set_grid_size(self, columns: int, rows: int) -> None:
         """
@@ -64,21 +70,25 @@ class TileSet:
             image_path: Path to the PNG image file.
 
         Raises:
-            ImportError: If PIL/Pillow is not installed.
+            ImportError: If pygame is not installed.
             FileNotFoundError: If the image file does not exist.
             ValueError: If the image dimensions are not divisible by tile size.
         """
-        if not HAS_PIL:
-            raise ImportError("PIL/Pillow is required to load images. Install with: pip install Pillow")
+        if not HAS_PYGAME:
+            raise ImportError("pygame is required to load images. Install with: pip install pygame")
+
+        # Initialize pygame if not already initialized
+        if not pygame.get_init():
+            pygame.init()
 
         # Resolve and validate path
         path = Path(image_path)
         if not path.exists():
             raise FileNotFoundError(f"Image file not found: {image_path}")
 
-        # Load image and get dimensions
-        with Image.open(path) as img:
-            image_width, image_height = img.size
+        # Load image with pygame
+        self.surface = pygame.image.load(str(path)).convert_alpha()
+        image_width, image_height = self.surface.get_size()
 
         # Calculate grid size
         if image_width % self.tile_width != 0:
@@ -115,6 +125,26 @@ class TileSet:
 
         return x, y, self.tile_width, self.tile_height
 
+    def get_tile_surface(self, tile_id: int) -> Optional['pygame.Surface']:
+        """
+        Get a pygame Surface for a specific tile.
+
+        Args:
+            tile_id: The tile ID.
+
+        Returns:
+            Pygame Surface containing the tile or None if invalid.
+        """
+        if self.surface is None:
+            return None
+
+        rect = self.get_tile_rect(tile_id)
+        if rect is None:
+            return None
+
+        x, y, w, h = rect
+        return self.surface.subsurface((x, y, w, h))
+
     def __repr__(self) -> str:
         """String representation of the tileset."""
         return f"TileSet(tile_size={self.tile_width}x{self.tile_height}, grid={self.columns}x{self.rows})"
@@ -141,17 +171,21 @@ class TileSet:
             TileSet object with the generated tileset loaded.
 
         Raises:
-            ImportError: If PIL/Pillow or Color class is not available.
+            ImportError: If pygame or Color class is not available.
             ValueError: If colors list is empty.
         """
-        if not HAS_PIL:
-            raise ImportError("PIL/Pillow is required to generate images. Install with: pip install Pillow")
+        if not HAS_PYGAME:
+            raise ImportError("pygame is required to generate images. Install with: pip install pygame")
 
         if not HAS_COLOR:
             raise ImportError("Color class is required for tileset generation")
 
         if not colors:
             raise ValueError("Colors list cannot be empty")
+
+        # Initialize pygame if not already initialized
+        if not pygame.get_init():
+            pygame.init()
 
         num_tiles = len(colors)
 
@@ -162,11 +196,12 @@ class TileSet:
 
         rows = (num_tiles + columns - 1) // columns  # Ceiling division
 
-        # Create image
+        # Create surface
         image_width = columns * tile_width
         image_height = rows * tile_height
 
-        img = Image.new('RGBA', (image_width, image_height), (0, 0, 0, 0))
+        surface = pygame.Surface((image_width, image_height), pygame.SRCALPHA)
+        surface.fill((0, 0, 0, 0))  # Transparent background
 
         # Fill tiles with colors
         for idx, color in enumerate(colors):
@@ -176,11 +211,9 @@ class TileSet:
             x = col * tile_width
             y = row * tile_height
 
-            # Create a tile with the flat color
-            rgba = color.to_rgba()
-            for py in range(tile_height):
-                for px in range(tile_width):
-                    img.putpixel((x + px, y + py), rgba)
+            # Create a rect with the flat color
+            rgba = color.as_rgba_tuple()
+            pygame.draw.rect(surface, rgba, (x, y, tile_width, tile_height))
 
         # Save image
         if output_path is None:
@@ -189,7 +222,7 @@ class TileSet:
                 output_path = f.name
 
         path = Path(output_path)
-        img.save(path, 'PNG')
+        pygame.image.save(surface, str(path))
 
         # Create and load tileset
         tileset = TileSet(tile_width, tile_height)
@@ -226,7 +259,7 @@ class TileSet:
             TileSet object with the generated color scale tileset loaded.
 
         Raises:
-            ImportError: If PIL/Pillow or Color class is not available.
+            ImportError: If pygame or Color class is not available.
             ValueError: If nsteps < 2.
 
         Example:
@@ -283,7 +316,7 @@ class TileSet:
             TileSet object with the generated grayscale tileset loaded.
 
         Raises:
-            ImportError: If PIL/Pillow or Color class is not available.
+            ImportError: If pygame or Color class is not available.
             ValueError: If nsteps < 2.
 
         Example:
