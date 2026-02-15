@@ -8,7 +8,7 @@ from PIL import Image, ImageTk, ImageDraw
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
-from tilemap import TileMap, TileSet
+from core.tilemap import TileMap, TileSet
 class TilemapCanvas(ttk.Frame):
     """Canvas for displaying and editing a tilemap."""
     def __init__(self, parent, **kwargs):

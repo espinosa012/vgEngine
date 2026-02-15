@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional
-from tilemap import TileMap
+from core.tilemap import TileMap
 try:
     from .config import (
         TilemapThemeColors,

@@ -88,7 +88,7 @@ ui_tools/vgNoiseViewer/
 El editor utiliza las clases simplificadas de tilemap:
 
 ```python
-from tilemap import TileMap, TileSet, Tile
+from core.tilemap import TileMap, TileSet, Tile
 
 # VGTileMap: Gestión del mapa de tiles
 tilemap = TileMap(width=20, height=15, tile_width=32, tile_height=32)

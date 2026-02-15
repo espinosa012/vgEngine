@@ -36,6 +36,9 @@ dev = [
 viewer = [
     "Pillow>=10.0.0",
 ]
+game = [
+    "pygame>=2.5.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/virigir/vgNoise"

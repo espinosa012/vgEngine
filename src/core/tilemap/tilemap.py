@@ -2,8 +2,9 @@
 VGTileMap class for managing tilemaps.
 """
 
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 from .mapcell import MapCell
+from .tileset import TileSet
 
 
 class TileMapLayer:
@@ -82,6 +83,7 @@ class TileMap:
         tile_width: Width of each tile in pixels.
         tile_height: Height of each tile in pixels.
         layers: List of TileMapLayer objects.
+        tilesets: Dictionary of TileSet objects indexed by tileset_id.
     """
 
     def __init__(
@@ -107,6 +109,7 @@ class TileMap:
         self.tile_width = tile_width
         self.tile_height = tile_height
         self.layers: List[TileMapLayer] = []
+        self.tilesets: Dict[int, TileSet] = {}  # tileset_id -> TileSet
 
         # Create initial layers
         for _ in range(num_layers):
@@ -198,6 +201,69 @@ class TileMap:
         if 0 <= layer < len(self.layers):
             return self.layers[layer].data
         return []
+
+    # tilesets
+    def add_tileset(self, tileset_id: int, tileset: TileSet) -> None:
+        """
+        Register a tileset with the tilemap.
+
+        Args:
+            tileset_id: Unique identifier for the tileset.
+            tileset: TileSet object to register.
+        """
+        self.tilesets[tileset_id] = tileset
+
+    def remove_tileset(self, tileset_id: int) -> bool:
+        """
+        Remove a tileset from the tilemap.
+
+        Args:
+            tileset_id: ID of the tileset to remove.
+
+        Returns:
+            True if removed successfully, False if not found.
+        """
+        if tileset_id in self.tilesets:
+            del self.tilesets[tileset_id]
+            return True
+        return False
+
+    def get_tileset(self, tileset_id: int) -> Optional[TileSet]:
+        """
+        Get a tileset by its ID.
+
+        Args:
+            tileset_id: ID of the tileset.
+
+        Returns:
+            TileSet object or None if not found.
+        """
+        return self.tilesets.get(tileset_id)
+
+    def has_tileset(self, tileset_id: int) -> bool:
+        """
+        Check if a tileset is registered.
+
+        Args:
+            tileset_id: ID of the tileset.
+
+        Returns:
+            True if the tileset exists, False otherwise.
+        """
+        return tileset_id in self.tilesets
+
+    def clear_tilesets(self) -> None:
+        """Clear all registered tilesets."""
+        self.tilesets.clear()
+
+    def get_tileset_ids(self) -> List[int]:
+        """
+        Get a list of all registered tileset IDs.
+
+        Returns:
+            List of tileset IDs.
+        """
+        return list(self.tilesets.keys())
 
     # size
     def get_size(self) -> Tuple[int, int]:

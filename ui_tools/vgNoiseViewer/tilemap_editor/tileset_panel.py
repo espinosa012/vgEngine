@@ -8,7 +8,7 @@ from PIL import Image, ImageTk
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
-from tilemap import TileSet
+from core.tilemap import TileSet
 class TilesetPanel(ttk.Frame):
     """Panel for managing and displaying tilesets."""
     def __init__(

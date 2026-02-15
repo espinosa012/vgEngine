@@ -94,7 +94,7 @@ Ejemplo: Una imagen de 256x128 con tiles de 32x32 = Grid de 8x4 tiles (32 tiles 
 ### Crear un Mapa Simple
 
 ```python
-from tilemap import TileMap, TileSet
+from core.tilemap import TileMap, TileSet
 
 # Crear tileset
 tileset = TileSet(tile_width=32, tile_height=32)
