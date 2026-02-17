@@ -4,9 +4,39 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="mac">
+    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="renaming">
+      <change afterPath="$PROJECT_DIR$/THEMES_ELIMINATION_SUMMARY.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UI_FRAMEWORK_SUMMARY.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/demo_ui_framework.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ejemplos_ui.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/final_test.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/simple_test.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/containers/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/containers/container.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/containers/grid.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/containers/hbox.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/containers/scroll_view.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/containers/vbox.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/manager.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/theme.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widget.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/button.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/checkbox.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/image.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/label.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/panel.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/slider.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ui/widgets/text_input.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_demo.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_themes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_panel_fix.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/verify_no_themes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vgEngine.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vgEngine.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -15,6 +45,7 @@
   </component>
   <component name="CopilotPersistence">
     <persistenceIdMap>
+      <entry key="_/Users/espinosa025/Documents/virigir/vgEngine" value="39ncbEDIe253bmLjhVhJFrRgA7h" />
       <entry key="_/Users/espinosa025/Documents/virigir/vgNoise" value="39nbDNqKayZuGAjNKeSuKFKUr0e" />
       <entry key="_/home/deck/Documents/virigir/vgNoise" value="39LJok2FKa9sEv9PdE2MX3lBEgm" />
     </persistenceIdMap>
@@ -43,15 +74,12 @@
     &quot;assignee&quot;: &quot;espinosa012&quot;
   }
 }</component>
-  <component name="GithubDefaultAccount">
-    <option name="defaultAccountId" value="66b215f7-fe61-4b5d-989e-3184f4c29b8a" />
-  </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/espinosa012/vgNoise",
-    "accountId": "b571245e-2ba6-4924-b582-7429c1e83902"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/espinosa012/vgNoise&quot;,
+    &quot;accountId&quot;: &quot;b571245e-2ba6-4924-b582-7429c1e83902&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 4
 }</component>
@@ -60,34 +88,44 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.Unnamed.executor&quot;: &quot;Run&quot;,
-    &quot;Python.app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.matrix_app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.noise_dialog.executor&quot;: &quot;Run&quot;,
-    &quot;Python.pygame_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_matrix_editor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_noise_viewer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_tilemap_editor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_viewer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.tilemap_canvas.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;SHELLCHECK.PATH&quot;: &quot;/home/deck/.local/share/JetBrains/PyCharm2025.3/Shell Script/shellcheck&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/espinosa025/Documents/virigir/vgNoise&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python tests.pytest in test_demo.py.executor": "Run",
+    "Python.Unnamed.executor": "Run",
+    "Python.app.executor": "Run",
+    "Python.demo_ui_framework.executor": "Run",
+    "Python.matrix_app.executor": "Run",
+    "Python.noise_dialog.executor": "Run",
+    "Python.pygame_test.executor": "Run",
+    "Python.python3.13.executor": "Run",
+    "Python.run_matrix_editor.executor": "Run",
+    "Python.run_noise_viewer.executor": "Run",
+    "Python.run_tilemap_editor.executor": "Run",
+    "Python.run_viewer.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.tilemap_canvas.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHELLCHECK.PATH": "/home/deck/.local/share/JetBrains/PyCharm2025.3/Shell Script/shellcheck",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/espinosa025/Documents/virigir/vgEngine",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings module-name="vgEngine" is-module-sdk="true">
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myModuleName" value="vgEngine" />
+      </console-settings>
+    </option>
+  </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/core/base" />
@@ -98,29 +136,6 @@
     </key>
   </component>
   <component name="RunManager">
-    <configuration name="Unnamed" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="vgEngine" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="vgEngine" />
       <option name="ENV_FILES" value="" />
@@ -434,7 +449,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771334838027</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="renaming">
+      <option name="closed" value="true" />
+      <created>1771335397160</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1771335397160</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -445,7 +468,6 @@
     <MESSAGE value="visor updated for zoom" />
     <MESSAGE value="vgmatrix y refactor" />
     <MESSAGE value="vgmatrix" />
-    <MESSAGE value="renaming" />
     <MESSAGE value="project refactoring, new tilemap and ui tools" />
     <MESSAGE value="color class" />
     <MESSAGE value="removing tile" />
@@ -458,7 +480,8 @@
     <MESSAGE value="updating" />
     <MESSAGE value="pathfinding first approach" />
     <MESSAGE value="mac" />
-    <option name="LAST_COMMIT_MESSAGE" value="mac" />
+    <MESSAGE value="renaming" />
+    <option name="LAST_COMMIT_MESSAGE" value="renaming" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/vgNoise$run_tilemap_editor.coverage" NAME="run_tilemap_editor Coverage Results" MODIFIED="1771093416577" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ui_tools/vgNoiseViewer" />
