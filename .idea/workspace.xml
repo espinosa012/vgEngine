@@ -4,39 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="renaming">
-      <change afterPath="$PROJECT_DIR$/THEMES_ELIMINATION_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UI_FRAMEWORK_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/demo_ui_framework.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ejemplos_ui.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/final_test.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simple_test.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/containers/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/containers/container.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/containers/grid.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/containers/hbox.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/containers/scroll_view.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/containers/vbox.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/manager.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/theme.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widget.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/button.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/checkbox.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/image.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/label.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/panel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/slider.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ui/widgets/text_input.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_demo.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_no_themes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_panel_fix.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/verify_no_themes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vgEngine.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vgEngine.iml" afterDir="false" />
+    <list default="true" id="1b3760f7-cbcd-414c-ae5d-16d36f91ad5c" name="Changes" comment="ui">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/demo_pathfinding.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ejemplos_pathfinding.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/final_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/simple_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/my_prompts.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/theme.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_demo.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_no_themes.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_panel_fix.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_pathfinding_quick.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/verify_no_themes.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,7 +74,9 @@
     "Python tests.pytest in test_demo.py.executor": "Run",
     "Python.Unnamed.executor": "Run",
     "Python.app.executor": "Run",
+    "Python.demo_pathfinding.executor": "Run",
     "Python.demo_ui_framework.executor": "Run",
+    "Python.ejemplos_ui.executor": "Run",
     "Python.matrix_app.executor": "Run",
     "Python.noise_dialog.executor": "Run",
     "Python.pygame_test.executor": "Run",
@@ -457,7 +439,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771335397160</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="ui">
+      <option name="closed" value="true" />
+      <created>1771342339052</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1771342339052</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -481,7 +471,8 @@
     <MESSAGE value="pathfinding first approach" />
     <MESSAGE value="mac" />
     <MESSAGE value="renaming" />
-    <option name="LAST_COMMIT_MESSAGE" value="renaming" />
+    <MESSAGE value="ui" />
+    <option name="LAST_COMMIT_MESSAGE" value="ui" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/vgNoise$run_tilemap_editor.coverage" NAME="run_tilemap_editor Coverage Results" MODIFIED="1771093416577" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ui_tools/vgNoiseViewer" />
