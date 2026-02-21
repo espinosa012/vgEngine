@@ -355,3 +355,69 @@ class TileSet:
             output_path=output_path
         )
 
+    @staticmethod
+    def generate_terrain_tileset(
+        tile_size: Tuple[int, int] = (32, 32),
+        columns: int = None,
+        output_path: str = None
+    ) -> 'TileSet':
+        """
+        Generate a terrain tileset with common terrain types.
+
+        This method creates a tileset with 6 basic terrain types using flat colors:
+        - Sand (0): Light yellow/beige
+        - Dirt (1): Brown
+        - Grass (2): Green
+        - Mountain (3): Gray/dark gray
+        - Snow (4): White/light blue
+        - Water (5): Blue
+
+        Each terrain type is represented by a single color tile.
+
+        Args:
+            tile_size: Size of each tile as (width, height) in pixels (default: (32, 32)).
+            columns: Number of columns in the tileset. If None, defaults to 6 (one row).
+            output_path: Path to save the generated tileset image. If None, a temporary file is created.
+
+        Returns:
+            TileSet object with the generated terrain tileset loaded.
+
+        Raises:
+            ImportError: If pygame or Color class is not available.
+
+        Example:
+            >>> from core.tilemap.tileset import TileSet
+            >>> # Create terrain tileset
+            >>> tileset = TileSet.generate_terrain_tileset(
+            ...     tile_size=(32, 32),
+            ...     columns=6,
+            ...     output_path="terrain_tileset.png"
+            ... )
+            >>> # Use in tilemap:
+            >>> # 0 = Sand, 1 = Dirt, 2 = Grass, 3 = Mountain, 4 = Snow, 5 = Water
+        """
+        if not HAS_COLOR:
+            raise ImportError("Color class is required for tileset generation")
+
+        # Define terrain colors (RGB)
+        terrain_colors = [
+            Color(238, 214, 175),  # 0: Sand - light beige/yellow
+            Color(139, 90, 43),    # 1: Dirt - brown
+            Color(76, 153, 0),     # 2: Grass - green
+            Color(128, 128, 128),  # 3: Mountain - gray
+            Color(240, 248, 255),  # 4: Snow - white/light blue
+            Color(65, 105, 225),   # 5: Water - blue
+        ]
+
+        # Default to 6 columns (single row) if not specified
+        if columns is None:
+            columns = 6
+
+        # Generate tileset from the terrain colors
+        return TileSet.generate_tileset_from_colors(
+            terrain_colors,
+            tile_size=tile_size,
+            columns=columns,
+            output_path=output_path
+        )
+

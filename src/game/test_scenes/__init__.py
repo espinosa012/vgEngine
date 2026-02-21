@@ -6,10 +6,14 @@ Contains example scenes for testing different features.
 
 from .base_scene import BaseScene
 from .tilemap_camera_scene import TilemapCameraScene
+from .random_terrain_scene import RandomTerrainScene
+from .character_test_scene import CharacterTestScene
 
 # Registry of all available scenes
 AVAILABLE_SCENES = [
     TilemapCameraScene,
+    RandomTerrainScene,
+    CharacterTestScene,
 ]
 
 

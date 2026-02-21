@@ -20,7 +20,7 @@ if str(src_dir) not in sys.path:
 import pygame
 
 # Importar escena
-from test_scenes.tilemap_camera_scene import TilemapCameraScene
+from test_scenes.random_terrain_scene import RandomTerrainScene
 
 
 # Constantes
@@ -39,7 +39,7 @@ class BaseGameApp:
 
         # Crear ventana
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Large TileMap with Chunks (2024x2024) - vgNoise")
+        pygame.display.set_caption("Random Terrain Map (256x256) - vgEngine")
 
         # Reloj para controlar FPS
         self.clock = pygame.time.Clock()
@@ -49,33 +49,29 @@ class BaseGameApp:
         self.frame_count = 0
 
         # Crear y configurar la escena
-        self.scene = TilemapCameraScene()
-        self.scene.setup(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.scene = RandomTerrainScene()
+        self.scene.on_enter()
 
         print("✓ Pygame inicializado correctamente")
         print(f"✓ Ventana creada: {WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        print(f"✓ Escena cargada: {self.scene.name}")
+        print(f"✓ Escena cargada: RandomTerrainScene")
 
     def handle_events(self):
         """Maneja eventos de teclado y ratón."""
-        events = pygame.event.get()
-
-        for event in events:
+        for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+                self.scene.running = False
                 print("✓ Ventana cerrada por el usuario")
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
+                    self.scene.running = False
                     print("✓ ESC presionado - cerrando")
 
-        # Pasar eventos a la escena
-        self.scene.handle_events(events)
-
-        # Pasar teclas presionadas a la escena
-        keys = pygame.key.get_pressed()
-        self.scene.handle_keys(keys)
+            # Pasar eventos a la escena
+            self.scene.handle_event(event)
 
     def update(self):
         """Actualiza la lógica del juego."""
@@ -89,22 +85,13 @@ class BaseGameApp:
 
     def draw(self):
         """Dibuja la escena en la pantalla."""
-        # Limpiar y dibujar escena
+        # Limpiar pantalla y dibujar escena
         self.scene.draw(self.screen)
 
-        # Dibujar info de la escena
-        font = pygame.font.Font(None, 20)
-        info_lines = self.scene.get_info_text()
-
-        y_offset = 10
-        for line in info_lines:
-            surface = font.render(line, True, (0, 255, 255))
-            self.screen.blit(surface, (10, y_offset))
-            y_offset += 22
-
         # Dibujar FPS
-        fps_text = font.render(f"FPS: {int(self.clock.get_fps())}", True, (0, 255, 255))
-        self.screen.blit(fps_text, (WINDOW_WIDTH - 100, 10))
+        font = pygame.font.Font(None, 20)
+        fps_text = font.render(f"FPS: {int(self.clock.get_fps())}", True, (100, 255, 100))
+        self.screen.blit(fps_text, (WINDOW_WIDTH - 80, 10))
 
         # Actualizar pantalla
         pygame.display.flip()
@@ -112,19 +99,16 @@ class BaseGameApp:
     def run(self):
         """Loop principal del juego."""
         print("\n" + "=" * 60)
-        print("LARGE TILEMAP WITH CHUNKS TEST")
+        print("RANDOM TERRAIN MAP TEST")
         print("=" * 60)
-        print("Map size: 2024x2024 tiles")
-        print("Chunk size: 256x256 tiles")
-        print("Only the chunk where camera is located is rendered")
+        print("Map size: 256x256 tiles")
+        print("Tile size: 32x32 pixels")
+        print("Terrain types: Sand, Dirt, Grass, Mountain, Snow, Water")
         print()
         print("Controles:")
         print("  - WASD o Flechas: Mover cámara")
-        print("  - Rueda del ratón: Zoom (centrado en cursor)")
-        print("  - +/- : Zoom in/out")
-        print("  - R: Reset cámara")
-        print("  - SPACE: Info de cámara en consola")
-        print("  - ESC o X: Cerrar ventana")
+        print("  - Mouse hover: Ver información del tile")
+        print("  - ESC: Cerrar ventana")
         print("=" * 60 + "\n")
 
         while self.running:
@@ -141,7 +125,7 @@ class BaseGameApp:
             self.clock.tick(FPS)
 
         # Cleanup de la escena
-        self.scene.cleanup()
+        self.scene.on_exit()
 
         # Cerrar Pygame
         pygame.quit()
@@ -158,7 +142,7 @@ class BaseGameApp:
 def main():
     """Función principal."""
     print("=" * 60)
-    print("PYGAME TEST - Large TileMap with Chunks - vgNoise Project")
+    print("PYGAME TEST - Random Terrain Map - vgEngine")
     print("=" * 60)
     print(f"Pygame version: {pygame.version.ver}")
     print(f"SDL version: {'.'.join(map(str, pygame.get_sdl_version()))}")
