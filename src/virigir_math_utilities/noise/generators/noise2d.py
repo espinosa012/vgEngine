@@ -8,13 +8,9 @@ from typing import Optional, Tuple, Sequence, Dict, Any, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import (
-    NoiseType, FractalType, CellularDistanceFunction, CellularReturnType,
-    DomainWarpType, DomainWarpFractalType
-)
-from .domain_warp import DomainWarp2D
-
+from . import DomainWarp2D
+from ..core import NoiseGenerator, FractalType, NoiseType, CellularDistanceFunction, CellularReturnType, DomainWarpType, \
+    DomainWarpFractalType
 
 # JSON file extension for noise configurations
 NOISE_JSON_EXTENSION = ".noise.json"
@@ -330,6 +326,41 @@ class NoiseGenerator2D(NoiseGenerator):
             )
 
         return cls(config=converted_config)
+
+    @classmethod
+    def all_from_config_json(
+        cls, filepath: Union[str, Path]
+    ) -> Dict[str, "NoiseGenerator2D"]:
+        """
+        Load all noise generators defined in a config.json file.
+
+        The JSON file is expected to have a ``"noise"`` key containing a
+        mapping of noise names to their noise parameter dictionaries.
+
+        Args:
+            filepath: Path to the config.json file.
+
+        Returns:
+            A dictionary mapping noise names to NoiseGenerator2D instances.
+
+        Example::
+
+            generators = NoiseGenerator2D.all_from_config_json(
+                "configs/config.json"
+            )
+            base_elevation = generators["base_elevation"]
+            continentality = generators["continentality"]
+        """
+        filepath = Path(filepath)
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        noise_section = data.get("noise", {})
+        generators: Dict[str, "NoiseGenerator2D"] = {}
+        for name, noise_data in noise_section.items():
+            generators[name] = cls.from_dict(noise_data)
+
+        return generators
 
     def save_to_json(self, filepath: Union[str, Path]) -> None:
         """
