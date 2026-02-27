@@ -246,69 +246,9 @@ class TilemapCameraScene(BaseScene):
         if not self.tilemap or not self.tileset or not self.camera:
             return
 
-        # Get visible tiles range
-        start_tile_x, start_tile_y, end_tile_x, end_tile_y = self.camera.get_visible_tiles(
-            self.tilemap.tile_width,
-            self.tilemap.tile_height,
-            self.tilemap.width,
-            self.tilemap.height
-        )
-
-        # Only render tiles that are in the current visible chunks
+        # Render all layers using chunk-based drawing
         for layer_idx in range(self.tilemap.num_layers):
-            layer = self.tilemap.layers[layer_idx]
-
-            for tile_y in range(start_tile_y, end_tile_y):
-                for tile_x in range(start_tile_x, end_tile_x):
-                    # Check if this tile belongs to a visible chunk
-                    chunk_x = tile_x // self.tilemap.chunk_size
-                    chunk_y = tile_y // self.tilemap.chunk_size
-
-                    if (chunk_x, chunk_y) not in self.current_chunks:
-                        continue  # Skip tiles not in visible chunks
-
-                    cell = layer.get_tile(tile_x, tile_y)
-                    if cell and not cell.is_empty:
-                        tileset = self.tilemap.tilesets.get(cell.tileset_id)
-                        if tileset and tileset.surface:
-                            tile_surface = tileset.get_tile_surface(cell.tile_id)
-                            if tile_surface:
-                                # World coordinates
-                                world_x = tile_x * self.tilemap.tile_width
-                                world_y = tile_y * self.tilemap.tile_height
-
-                                # World to screen coordinates
-                                screen_x, screen_y = self.camera.world_to_screen(world_x, world_y)
-
-                                # Calculate next tile position for exact sizing
-                                world_x_next = (tile_x + 1) * self.tilemap.tile_width
-                                world_y_next = (tile_y + 1) * self.tilemap.tile_height
-                                screen_x_next, screen_y_next = self.camera.world_to_screen(world_x_next, world_y_next)
-
-                                # Use rounded positions
-                                x1 = round(screen_x)
-                                y1 = round(screen_y)
-                                x2 = round(screen_x_next)
-                                y2 = round(screen_y_next)
-
-                                # Calculate exact size based on difference
-                                final_width = x2 - x1
-                                final_height = y2 - y1
-
-                                # Skip if too small
-                                if final_width < 1 or final_height < 1:
-                                    continue
-
-                                # Scale tile to final size
-                                if (tile_surface.get_width() != final_width or
-                                    tile_surface.get_height() != final_height):
-                                    scaled_tile = pygame.transform.scale(
-                                        tile_surface,
-                                        (final_width, final_height)
-                                    )
-                                    screen.blit(scaled_tile, (x1, y1))
-                                else:
-                                    screen.blit(tile_surface, (x1, y1))
+            self.tilemap.draw(screen, self.camera, layer=layer_idx)
 
     def get_info_text(self) -> list:
         """Get info text with chunk information."""

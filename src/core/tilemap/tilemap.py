@@ -3,6 +3,13 @@ VGTileMap class for managing tilemaps with chunk support.
 """
 
 from typing import Tuple, List, Optional, Dict
+
+try:
+    import pygame
+    HAS_PYGAME = True
+except ImportError:
+    HAS_PYGAME = False
+
 from .mapcell import MapCell
 from .tileset import TileSet
 
@@ -16,6 +23,7 @@ class TileMapChunk:
         chunk_y: Y coordinate of the chunk in chunk units.
         chunk_size: Size of the chunk (width and height in tiles).
         data: 2D list of MapCell objects for this chunk.
+        dirty: Whether the chunk surface needs to be re-rendered.
     """
 
     def __init__(self, chunk_x: int, chunk_y: int, chunk_size: int) -> None:
@@ -33,6 +41,8 @@ class TileMapChunk:
         self.data: List[List[MapCell]] = [
             [MapCell() for _ in range(chunk_size)] for _ in range(chunk_size)
         ]
+        self.dirty: bool = True
+        self._surface: Optional['pygame.Surface'] = None
 
     def get_tile(self, local_x: int, local_y: int) -> Optional[MapCell]:
         """
@@ -64,6 +74,43 @@ class TileMapChunk:
                 self.data[local_y][local_x].clear()
             else:
                 self.data[local_y][local_x].set(tileset_id, tile_id)
+            self.dirty = True
+            self._surface = None
+
+    def render_surface(self, tileset: TileSet, tile_w: int, tile_h: int) -> Optional['pygame.Surface']:
+        """
+        Pre-render this chunk to a single surface. Returns cached surface if not dirty.
+
+        Args:
+            tileset: TileSet to use for rendering.
+            tile_w: Tile width in pixels.
+            tile_h: Tile height in pixels.
+
+        Returns:
+            A pygame Surface with all tiles composited, or None if pygame is unavailable.
+        """
+        if not HAS_PYGAME:
+            return None
+
+        if not self.dirty and self._surface is not None:
+            return self._surface
+
+        size_px = self.chunk_size * tile_w, self.chunk_size * tile_h
+        surf = pygame.Surface(size_px, pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+
+        for ly in range(self.chunk_size):
+            row = self.data[ly]
+            for lx in range(self.chunk_size):
+                cell = row[lx]
+                if not cell.is_empty:
+                    tile_surf = tileset.get_tile_surface(cell.tile_id)
+                    if tile_surf:
+                        surf.blit(tile_surf, (lx * tile_w, ly * tile_h))
+
+        self._surface = surf
+        self.dirty = False
+        return surf
 
     def is_empty(self) -> bool:
         """Check if all cells in the chunk are empty."""
@@ -498,6 +545,91 @@ class TileMap:
             Tuple of (width, height) in pixels.
         """
         return self.width * self.tile_width, self.height * self.tile_height
+
+    # -------------------------------------------------------------------------
+    # Rendering helpers
+    # -------------------------------------------------------------------------
+
+    def draw(
+        self,
+        surface: 'pygame.Surface',
+        camera: 'Camera',
+        tileset: Optional[TileSet] = None,
+        layer: int = 0,
+    ) -> None:
+        """
+        Efficiently render visible chunks to *surface* using chunk-based rendering.
+
+        Each chunk is pre-rendered into a single surface that is cached until
+        a tile inside it changes (dirty flag).  Only visible chunks are drawn,
+        and scaling (zoom) is performed once per visible chunk instead of once
+        per tile.
+
+        Args:
+            surface: Target pygame surface (usually the screen).
+            camera: Camera instance for coordinate conversion and visibility.
+            tileset: TileSet to use.  Falls back to ``self.tilesets.get(0)`` or
+                     the legacy ``self.tileset`` attribute if not provided.
+            layer: Layer index to render (default 0).
+        """
+        if not HAS_PYGAME:
+            return
+
+        # Resolve tileset
+        if tileset is None:
+            tileset = self.tilesets.get(0) or getattr(self, 'tileset', None)
+        if tileset is None or not (0 <= layer < len(self.layers)):
+            return
+
+        tile_w = self.tile_width
+        tile_h = self.tile_height
+        cs = self.chunk_size
+        zoom = camera.zoom
+
+        chunk_world_w = cs * tile_w
+        chunk_world_h = cs * tile_h
+        needs_scale = (zoom != 1.0)
+
+        # Determine visible chunk range from the camera
+        min_x, min_y, max_x, max_y = camera.get_visible_area()
+        start_cx = max(0, int(min_x // chunk_world_w))
+        start_cy = max(0, int(min_y // chunk_world_h))
+        end_cx = int(max_x // chunk_world_w) + 1
+        end_cy = int(max_y // chunk_world_h) + 1
+
+        lyr = self.layers[layer]
+
+        for cy in range(start_cy, end_cy + 1):
+            # Compute Y screen bounds for this row of chunks
+            sy_top = round(camera.world_to_screen(0, cy * chunk_world_h)[1])
+            sy_bot = round(camera.world_to_screen(0, (cy + 1) * chunk_world_h)[1])
+            dest_h = sy_bot - sy_top
+            if dest_h < 1:
+                continue
+
+            for cx in range(start_cx, end_cx + 1):
+                chunk = lyr.chunks.get((cx, cy))
+                if chunk is None:
+                    continue
+
+                # Pre-render the chunk at native resolution (cached if clean)
+                base_surf = chunk.render_surface(tileset, tile_w, tile_h)
+                if base_surf is None:
+                    continue
+
+                # Compute X screen bounds for this column of chunks
+                sx_left = round(camera.world_to_screen(cx * chunk_world_w, 0)[0])
+                sx_right = round(camera.world_to_screen((cx + 1) * chunk_world_w, 0)[0])
+                dest_w = sx_right - sx_left
+                if dest_w < 1:
+                    continue
+
+                if needs_scale:
+                    draw_surf = pygame.transform.scale(base_surf, (dest_w, dest_h))
+                else:
+                    draw_surf = base_surf
+
+                surface.blit(draw_surf, (sx_left, sy_top))
 
     def __repr__(self) -> str:
         """String representation of the tilemap."""

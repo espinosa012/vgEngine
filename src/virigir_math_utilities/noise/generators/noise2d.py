@@ -9,7 +9,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import NoiseType, FractalType, CellularDistanceFunction, CellularReturnType
+from vgmath.noise.core.enums import (
+    NoiseType, FractalType, CellularDistanceFunction, CellularReturnType,
+    DomainWarpType, DomainWarpFractalType
+)
+from .domain_warp import DomainWarp2D
 
 
 # JSON file extension for noise configurations
@@ -50,6 +54,15 @@ class NoiseGenerator2D(NoiseGenerator):
         "cellular_distance_function": CellularDistanceFunction.EUCLIDEAN_SQUARED.name,
         "cellular_return_type": CellularReturnType.DISTANCE.name,
         "cellular_jitter": 1.0,
+        # Domain warp
+        "domain_warp_enabled": 0,
+        "domain_warp_type": DomainWarpType.SIMPLEX.value,
+        "domain_warp_amplitude": 30.0,
+        "domain_warp_frequency": 0.05,
+        "domain_warp_fractal_type": DomainWarpFractalType.NONE.value,
+        "domain_warp_fractal_octaves": 5,
+        "domain_warp_fractal_lacunarity": 2.0,
+        "domain_warp_fractal_gain": 0.5,
     }
 
     def __init__(
@@ -85,6 +98,19 @@ class NoiseGenerator2D(NoiseGenerator):
         super().__init__(seed)
         self._noise_type = noise_type
         self._generator = self._create_generator_from_config(self._config)
+        self._domain_warp = self._create_domain_warp_from_config(self._config)
+
+    def _create_domain_warp_from_config(self, config: Dict[str, Any]) -> DomainWarp2D:
+        """
+        Create the domain warp generator based on the configuration.
+
+        Args:
+            config: Dictionary with noise configuration.
+
+        Returns:
+            A DomainWarp2D instance.
+        """
+        return DomainWarp2D.from_dict(config, seed=config.get("seed", 0))
 
     def _create_generator_from_config(self, config: Dict[str, Any]) -> NoiseGenerator:
         """
@@ -178,6 +204,7 @@ class NoiseGenerator2D(NoiseGenerator):
         self._noise_type = NoiseType[self._config.get("noise_type", "PERLIN")]
         self.seed = self._config.get("seed", 0)
         self._generator = self._create_generator_from_config(self._config)
+        self._domain_warp = self._create_domain_warp_from_config(self._config)
 
     @property
     def noise_type(self) -> NoiseType:
@@ -202,6 +229,11 @@ class NoiseGenerator2D(NoiseGenerator):
         """Get the underlying noise generator instance."""
         return self._generator
 
+    @property
+    def domain_warp(self) -> DomainWarp2D:
+        """Get the domain warp generator instance."""
+        return self._domain_warp
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the noise configuration to a dictionary for JSON serialization.
@@ -215,7 +247,7 @@ class NoiseGenerator2D(NoiseGenerator):
         dist_func_str = self._config.get("cellular_distance_function", "EUCLIDEAN_SQUARED")
         return_type_str = self._config.get("cellular_return_type", "DISTANCE")
 
-        return {
+        result = {
             "version": "1.0",
             "noise_type": NoiseType[noise_type_str].value,
             "seed": self._config.get("seed", 0),
@@ -233,6 +265,11 @@ class NoiseGenerator2D(NoiseGenerator):
             "cellular_return_type": CellularReturnType[return_type_str].value,
             "cellular_jitter": self._config.get("cellular_jitter", 1.0),
         }
+
+        # Add domain warp fields
+        result.update(self._domain_warp.to_dict())
+
+        return result
 
     @staticmethod
     def _enum_value_to_name(enum_class, value) -> str:
@@ -353,6 +390,12 @@ class NoiseGenerator2D(NoiseGenerator):
         """
         if len(position) != 2:
             raise ValueError(f"Position must have 2 elements, got {len(position)}")
+
+        # Apply domain warp if enabled
+        if self._domain_warp.enabled:
+            warped_x, warped_y = self._domain_warp.warp_single(position[0], position[1])
+            position = (warped_x, warped_y)
+
         return self._generator.get_value_at(position)
 
     def get_values_vectorized(
@@ -370,6 +413,10 @@ class NoiseGenerator2D(NoiseGenerator):
         Returns:
             Array of noise values normalized to [0, 1].
         """
+        # Apply domain warp if enabled
+        if self._domain_warp.enabled:
+            x, y = self._domain_warp.warp_coordinates(x, y)
+
         if hasattr(self._generator, 'get_values_vectorized'):
             return self._generator.get_values_vectorized(x, y)
         else:
@@ -397,19 +444,29 @@ class NoiseGenerator2D(NoiseGenerator):
                 f"Region must have {self.dimensions} dimensions, got {len(region)}"
             )
 
-        if hasattr(self._generator, 'generate_region'):
-            return self._generator.generate_region(region)
-
-        # Fallback implementation
+        # Create coordinate arrays
         x_coords = np.linspace(region[0][0], region[0][1], region[0][2])
         y_coords = np.linspace(region[1][0], region[1][1], region[1][2])
 
         xx, yy = np.meshgrid(x_coords, y_coords, indexing='ij')
         shape = xx.shape
-        x_flat = xx.flatten().astype(np.float64)
-        y_flat = yy.flatten().astype(np.float64)
 
-        result = self.get_values_vectorized(x_flat, y_flat)
+        # Apply domain warp if enabled
+        if self._domain_warp.enabled:
+            warped_x, warped_y = self._domain_warp.warp_coordinates(xx, yy)
+            x_flat = warped_x.ravel().astype(np.float64)
+            y_flat = warped_y.ravel().astype(np.float64)
+        else:
+            x_flat = xx.ravel().astype(np.float64)
+            y_flat = yy.ravel().astype(np.float64)
+
+        # Generate noise using the underlying generator's vectorized method if available
+        if hasattr(self._generator, 'get_values_vectorized'):
+            result = self._generator.get_values_vectorized(x_flat, y_flat)
+        else:
+            result = np.empty(x_flat.shape, dtype=np.float64)
+            for i in range(len(x_flat)):
+                result[i] = self._generator.get_value_at((x_flat[i], y_flat[i]))
 
         return result.reshape(shape)
 

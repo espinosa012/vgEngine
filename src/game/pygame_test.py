@@ -20,7 +20,7 @@ if str(src_dir) not in sys.path:
 import pygame
 
 # Importar escena
-from test_scenes.random_terrain_scene import RandomTerrainScene
+from test_scenes.matrix_viewer_scene import MatrixViewerScene
 
 
 # Constantes
@@ -39,7 +39,7 @@ class BaseGameApp:
 
         # Crear ventana
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Random Terrain Map (256x256) - vgEngine")
+        pygame.display.set_caption("Matrix Viewer - vgEngine")
 
         # Reloj para controlar FPS
         self.clock = pygame.time.Clock()
@@ -49,12 +49,12 @@ class BaseGameApp:
         self.frame_count = 0
 
         # Crear y configurar la escena
-        self.scene = RandomTerrainScene()
+        self.scene = MatrixViewerScene()
         self.scene.on_enter()
 
         print("✓ Pygame inicializado correctamente")
         print(f"✓ Ventana creada: {WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        print(f"✓ Escena cargada: RandomTerrainScene")
+        print(f"✓ Escena cargada: MatrixViewerScene")
 
     def handle_events(self):
         """Maneja eventos de teclado y ratón."""
@@ -64,14 +64,12 @@ class BaseGameApp:
                 self.scene.running = False
                 print("✓ Ventana cerrada por el usuario")
 
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.running = False
-                    self.scene.running = False
-                    print("✓ ESC presionado - cerrando")
-
             # Pasar eventos a la escena
             self.scene.handle_event(event)
+
+            # Si la escena indica que quiere cerrar, cerramos
+            if not self.scene.running:
+                self.running = False
 
     def update(self):
         """Actualiza la lógica del juego."""
@@ -99,16 +97,19 @@ class BaseGameApp:
     def run(self):
         """Loop principal del juego."""
         print("\n" + "=" * 60)
-        print("RANDOM TERRAIN MAP TEST")
+        print("MATRIX VIEWER")
         print("=" * 60)
-        print("Map size: 256x256 tiles")
-        print("Tile size: 32x32 pixels")
-        print("Terrain types: Sand, Dirt, Grass, Mountain, Snow, Water")
+        print("Enter matrix dimensions and click Generate.")
         print()
-        print("Controles:")
+        print("Controles (menú):")
+        print("  - Tab: Cambiar campo")
+        print("  - Enter/Click Generate: Generar matriz")
+        print("  - ESC: Salir")
+        print()
+        print("Controles (visor):")
         print("  - WASD o Flechas: Mover cámara")
-        print("  - Mouse hover: Ver información del tile")
-        print("  - ESC: Cerrar ventana")
+        print("  - Q/E: Zoom out/in")
+        print("  - ESC: Volver al menú")
         print("=" * 60 + "\n")
 
         while self.running:

@@ -1,0 +1,114 @@
+{
+  "parameters": {
+    "default_parameters": {
+      "global_seed": 0,
+      "world_size_x": 2048,
+      "world_size_y": 2048,
+      "equator_latitude": 0,
+      "min_continental_height": 0.023,
+      "peaks_and_valleys_scale": 1.0,
+      "continental_scale": 1.22,
+      "sea_scale": 1.17647,
+      "sea_elevation_threshold": 0.041666666,
+      "island_scale": 0.81,
+      "volcanic_island_scale": 0.81,
+      "island_threshold": 0.76,
+      "out_to_sea_factor": 0.7
+    }
+  },
+  "noise": {
+    "base_elevation": {
+      "seed": 3081993,
+      "cellular_distance_function": 0,
+      "cellular_jitter": 0.449999988079071,
+      "cellular_return_type": 1,
+
+      "domain_warp_enabled": 1,
+      "domain_warp_type": 0,
+      "domain_warp_amplitude": 30,
+      "domain_warp_frequency": 0.0500000007450581,
+      "domain_warp_fractal_type": 1,
+      "domain_warp_fractal_gain": 0.5,
+      "domain_warp_fractal_lacunarity": 6,
+      "domain_warp_fractal_octaves": 5,
+
+      "fractal_type": 1,
+      "fractal_gain": 0.5,
+      "fractal_lacunarity": 2,
+      "fractal_octaves": 5,
+      "fractal_ping_pong_strength": 2,
+      "fractal_weighted_strength": 0,
+      "frequency": 0.0130000002682209,
+      "noise_type": 1
+    },
+    "continentality": {
+      "seed": 23546900,
+      "cellular_distance_function": 3,
+      "cellular_jitter": 0.449999988079071,
+      "cellular_return_type": 2,
+      "domain_warp_enabled": 1,
+      "domain_warp_type": 0,
+      "domain_warp_amplitude": 30,
+      "domain_warp_frequency": 0.0500000007450581,
+      "domain_warp_fractal_type": 1,
+      "domain_warp_fractal_gain": 0.5,
+      "domain_warp_fractal_lacunarity": 6,
+      "domain_warp_fractal_octaves": 5,
+      "fractal_type": 1,
+      "fractal_gain": 5,
+      "fractal_lacunarity": 0.75,
+      "fractal_octaves": 2,
+      "fractal_ping_pong_strength": 2,
+      "fractal_weighted_strength": 0,
+      "frequency": 0.00224999990314245,
+      "noise_type": 0
+    },
+    "peaks_and_valleys": {
+      "seed": 252910699,
+      "cellular_distance_function": 0,
+      "cellular_jitter": 0.449999988079071,
+      "cellular_return_type": 1,
+      "domain_warp_enabled": 1,
+      "domain_warp_type": 0,
+      "domain_warp_amplitude": 30,
+      "domain_warp_frequency": 0.0500000007450581,
+      "domain_warp_fractal_type": 1,
+      "domain_warp_fractal_gain": 0.5,
+      "domain_warp_fractal_lacunarity": 6,
+      "domain_warp_fractal_octaves": 5,
+      "fractal_type": 3,
+      "fractal_gain": 0.262499988079071,
+      "fractal_lacunarity": 2.375,
+      "fractal_octaves": 5,
+      "fractal_ping_pong_strength": 2,
+      "fractal_weighted_strength": 0,
+      "frequency": 0.00600000005215406,
+      "noise_type": 5
+    },
+    "volcanic_noise": {
+      "seed": 19111993,
+      "cellular_distance_function": 0,
+      "cellular_jitter": 0.449999988079071,
+      "cellular_return_type": 1,
+      "domain_warp_enabled": 1,
+      "domain_warp_type": 0,
+      "domain_warp_amplitude": 30,
+      "domain_warp_frequency": 0.0500000007450581,
+      "domain_warp_fractal_type": 1,
+      "domain_warp_fractal_gain": 0.5,
+      "domain_warp_fractal_lacunarity": 6,
+      "domain_warp_fractal_octaves": 5,
+      "fractal_type": 1,
+      "fractal_gain": 0.800000011920929,
+      "fractal_lacunarity": 2,
+      "fractal_octaves": 5,
+      "fractal_ping_pong_strength": 2,
+      "fractal_weighted_strength": 0,
+      "frequency": 0.00650000013411045,
+      "noise_type": 0
+    }
+  }
+}
+
+
+

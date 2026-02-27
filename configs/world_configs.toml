@@ -1,4 +1,4 @@
-[default]
+[default_parameters]
 GlobalSeed = 0
 WorldSizeX = 2048
 WorldSizeY = 2048

@@ -47,6 +47,7 @@ class TileSet:
         self.rows = 0
         self.image_path: Optional[str] = None
         self.surface: Optional['pygame.Surface'] = None
+        self._tile_cache: dict = {}  # tile_id -> pygame.Surface
 
     @property
     def tile_width(self) -> int:
@@ -95,6 +96,7 @@ class TileSet:
 
         # Load image with pygame
         self.surface = pygame.image.load(str(path)).convert_alpha()
+        self._tile_cache.clear()
         image_width, image_height = self.surface.get_size()
 
         # Calculate grid size
@@ -134,7 +136,7 @@ class TileSet:
 
     def get_tile_surface(self, tile_id: int) -> Optional['pygame.Surface']:
         """
-        Get a pygame Surface for a specific tile.
+        Get a pygame Surface for a specific tile. Results are cached.
 
         Args:
             tile_id: The tile ID.
@@ -142,6 +144,9 @@ class TileSet:
         Returns:
             Pygame Surface containing the tile or None if invalid.
         """
+        if tile_id in self._tile_cache:
+            return self._tile_cache[tile_id]
+
         if self.surface is None:
             return None
 
@@ -150,7 +155,9 @@ class TileSet:
             return None
 
         x, y, w, h = rect
-        return self.surface.subsurface((x, y, w, h))
+        tile_surf = self.surface.subsurface((x, y, w, h)).copy()
+        self._tile_cache[tile_id] = tile_surf
+        return tile_surf
 
     def __repr__(self) -> str:
         """String representation of the tileset."""
@@ -298,19 +305,19 @@ class TileSet:
         nsteps: int = 16,
         tile_size: Tuple[int, int] = (32, 32),
         columns: int = None,
-        output_path: str = None
+        output_path: str = None,
+        white_to_black: bool = False
     ) -> 'TileSet':
         """
-        Generate a grayscale tileset from black (0,0,0) to white (255,255,255).
-
-        This method creates a grayscale gradient with the specified number of steps,
-        useful for creating grayscale palettes, shadow/light gradients, or testing purposes.
+        Generate a grayscale tileset.
 
         Args:
-            nsteps: Number of grayscale steps (must be >= 2). Common values: 8, 16, 32, 64, 256.
+            nsteps: Number of grayscale steps (must be >= 2).
             tile_size: Size of each tile as (width, height) in pixels (default: (32, 32)).
             columns: Number of columns in the tileset. If None, creates a square-ish grid.
-            output_path: Path to save the generated tileset image. If None, a temporary file is created.
+            output_path: Path to save the generated tileset image.
+            white_to_black: If True the scale goes from white (tile 0) to black (tile n-1).
+                            If False (default) it goes from black to white.
 
         Returns:
             TileSet object with the generated grayscale tileset loaded.
@@ -318,36 +325,16 @@ class TileSet:
         Raises:
             ImportError: If pygame or Color class is not available.
             ValueError: If nsteps < 2.
-
-        Example:
-            >>> from core.tilemap.tileset import TileSet
-            >>> # Create a 16-step grayscale tileset
-            >>> tileset = TileSet.generate_grayscale_tileset(
-            ...     nsteps=16,
-            ...     tile_size=(32, 32),
-            ...     columns=8,
-            ...     output_path="grayscale_16.png"
-            ... )
-            >>>
-            >>> # Create a 256-step grayscale tileset
-            >>> tileset = TileSet.generate_grayscale_tileset(
-            ...     nsteps=256,
-            ...     tile_size=(16, 16),
-            ...     columns=16,
-            ...     output_path="grayscale_256.png"
-            ... )
         """
         if not HAS_COLOR:
             raise ImportError("Color class is required for tileset generation")
 
-        # Create black and white colors
         black = Color(0, 0, 0)
         white = Color(255, 255, 255)
 
-        # Use the Color.get_color_scale method to generate the grayscale list
-        colors = Color.get_color_scale(black, white, nsteps)
+        init_color, final_color = (white, black) if white_to_black else (black, white)
+        colors = Color.get_color_scale(init_color, final_color, nsteps)
 
-        # Generate tileset from the grayscale colors
         return TileSet.generate_tileset_from_colors(
             colors,
             tile_size=tile_size,

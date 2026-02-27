@@ -8,12 +8,14 @@ from .base_scene import BaseScene
 from .tilemap_camera_scene import TilemapCameraScene
 from .random_terrain_scene import RandomTerrainScene
 from .character_test_scene import CharacterTestScene
+from .matrix_viewer_scene import MatrixViewerScene
 
 # Registry of all available scenes
 AVAILABLE_SCENES = [
     TilemapCameraScene,
     RandomTerrainScene,
     CharacterTestScene,
+    MatrixViewerScene,
 ]
 
 
@@ -49,6 +51,9 @@ def get_scene_list() -> list:
 __all__ = [
     "BaseScene",
     "TilemapCameraScene",
+    "RandomTerrainScene",
+    "CharacterTestScene",
+    "MatrixViewerScene",
     "AVAILABLE_SCENES",
     "get_scene_by_index",
     "get_scene_list",

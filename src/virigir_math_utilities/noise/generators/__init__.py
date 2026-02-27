@@ -9,6 +9,7 @@ from .cellular2d import CellularNoise2D
 from .valuecubic2d import ValueCubicNoise2D
 from .value2d import ValueNoise2D
 from .simplexsmooth2d import SimplexSmoothNoise2D
+from .domain_warp import DomainWarp2D
 
 __all__ = [
     "NoiseGenerator2D",
@@ -19,4 +20,5 @@ __all__ = [
     "ValueCubicNoise2D",
     "ValueNoise2D",
     "SimplexSmoothNoise2D",
+    "DomainWarp2D",
 ]

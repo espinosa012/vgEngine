@@ -7,6 +7,11 @@ from virigir_math_utilities import Matrix2D
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "world_configs.toml"
 
+class WorldNoise(Enum):
+    BaseElevation = "Continentality"
+    Continentality = "Continentality"
+    PeaksAndValleys = "PeaksAndValleys"
+    VolcanicNoise = "VolcanicNoise"
 
 class WorldParameterName(Enum):
     GlobalSeed = "GlobalSeed"
@@ -36,6 +41,7 @@ class WorldMatrixName(Enum):
     RiverFlow = "RiverFlow"
     Temperature = "Temperature"
 
+
 class WorldGenerationStage(Enum):
     Latitude = 0
     Elevation = 1
@@ -43,15 +49,12 @@ class WorldGenerationStage(Enum):
     Temperature = 3
 
 
-
-
 class VGWorld:
-
     parameters: dict[WorldParameterName, float | int]
-    matrix: list[Matrix2D]
+    matrix: dict[WorldMatrixName, Matrix2D]
 
-    def __init__(self, config_name: str = "default"):
-        self.matrix = []
+    def __init__(self, config_name: str = "default_parameters"):
+        self.initialize_matrix()
         self.load_parameters_from_toml(config_name)
 
     def load_parameters_from_toml(self, config_name: str) -> None:
@@ -61,12 +64,18 @@ class VGWorld:
             WorldParameterName(k): v for k, v in raw[config_name].items()
         }
 
-    def run_generation_pipeline_for_region(self, init_x: int, final_x:int, init_y: int, final_y: int):
+    def initialize_matrix(self):
+        for matrix_name in WorldMatrixName:
+            self.matrix[matrix_name] = Matrix2D((self.parameters[WorldParameterName.WorldSizeX],
+                                                 self.parameters[WorldParameterName.WorldSizeY]))
+
+    # Generation
+    def run_generation_pipeline_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         for stage in WorldGenerationStage:
             self.run_generation_stage_for_region(stage, init_x, init_y, final_x, final_y)
 
-
-    def run_generation_stage_for_region(self, stage: WorldGenerationStage, init_x: int, final_x:int, init_y: int, final_y: int):
+    def run_generation_stage_for_region(self, stage: WorldGenerationStage, init_x: int, final_x: int, init_y: int,
+                                        final_y: int):
         if stage is WorldGenerationStage.Latitude:
             self.run_latitude_stage_for_region(init_x, final_x, init_y, final_y)
         elif stage is WorldGenerationStage.Elevation:
@@ -76,14 +85,16 @@ class VGWorld:
         elif stage is WorldGenerationStage.Temperature:
             self.run_temperature_stage_for_region(init_x, final_x, init_y, final_y)
 
-    def run_latitude_stage_for_region(self, init_x: int, final_x:int, init_y: int, final_y: int):
+
+    """Pasamos las matrices vacías a los métodos que rellenan valores y las recuperamos ya rellenas"""
+    def run_latitude_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         pass
 
-    def run_elevation_stage_for_region(self, init_x: int, final_x:int, init_y: int, final_y: int):
+    def run_elevation_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         pass
 
-    def run_river_stage_for_region(self, init_x: int, final_x:int, init_y: int, final_y: int):
+    def run_river_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         pass
 
-    def run_temperature_stage_for_region(self, init_x: int, final_x:int, init_y: int, final_y: int):
+    def run_temperature_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         pass

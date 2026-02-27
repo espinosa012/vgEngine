@@ -50,3 +50,11 @@ class DomainWarpType(Enum):
     SIMPLEX = 0
     SIMPLEX_REDUCED = 1
     BASIC_GRID = 2
+
+
+class DomainWarpFractalType(Enum):
+    """Fractal types for domain warp, compatible with Godot FastNoiseLite."""
+    NONE = 0        # Single iteration, no fractal
+    PROGRESSIVE = 1  # Warp is applied progressively with each octave
+    INDEPENDENT = 2  # Each octave warps independently
+

@@ -712,6 +712,97 @@ class Matrix2D:
             other._data[other._mask]
         )
 
+    def get_submatrix(
+        self,
+        init_x: int,
+        final_x: int,
+        init_y: int,
+        final_y: int
+    ) -> "Matrix2D":
+        """
+        Extract a submatrix from the given region.
+
+        Args:
+            init_x: Starting row index (inclusive).
+            final_x: Ending row index (exclusive).
+            init_y: Starting column index (inclusive).
+            final_y: Ending column index (exclusive).
+
+        Returns:
+            New Matrix2D with the values from the specified region.
+
+        Raises:
+            IndexError: If the region is out of bounds.
+            ValueError: If the region is invalid (init >= final).
+
+        Example:
+            >>> sub = matrix.get_submatrix(0, 4, 0, 4)  # 4x4 submatrix
+        """
+        if init_x < 0 or init_y < 0 or final_x > self._shape[0] or final_y > self._shape[1]:
+            raise IndexError(
+                f"Region ({init_x}:{final_x}, {init_y}:{final_y}) out of bounds "
+                f"for matrix of shape {self._shape}"
+            )
+        if init_x >= final_x or init_y >= final_y:
+            raise ValueError(
+                f"Invalid region: init must be less than final "
+                f"(got rows {init_x}:{final_x}, cols {init_y}:{final_y})"
+            )
+
+        result = Matrix2D.__new__(Matrix2D)
+        result._shape = (final_x - init_x, final_y - init_y)
+        result._data = self._data[init_x:final_x, init_y:final_y].copy()
+        result._mask = self._mask[init_x:final_x, init_y:final_y].copy()
+        return result
+
+    def set_submatrix(
+        self,
+        init_x: int,
+        final_x: int,
+        init_y: int,
+        final_y: int,
+        other: "Matrix2D"
+    ) -> None:
+        """
+        Assign values from another matrix into the specified region.
+
+        Args:
+            init_x: Starting row index (inclusive).
+            final_x: Ending row index (exclusive).
+            init_y: Starting column index (inclusive).
+            final_y: Ending column index (exclusive).
+            other: Source Matrix2D whose values will be written into the region.
+                   Its shape must match (final_x - init_x, final_y - init_y).
+
+        Raises:
+            IndexError: If the region is out of bounds.
+            ValueError: If the region is invalid or other's shape does not match.
+
+        Example:
+            >>> patch = Matrix2D((4, 4), 1.0)
+            >>> matrix.set_submatrix(0, 4, 0, 4, patch)
+        """
+        if init_x < 0 or init_y < 0 or final_x > self._shape[0] or final_y > self._shape[1]:
+            raise IndexError(
+                f"Region ({init_x}:{final_x}, {init_y}:{final_y}) out of bounds "
+                f"for matrix of shape {self._shape}"
+            )
+        if init_x >= final_x or init_y >= final_y:
+            raise ValueError(
+                f"Invalid region: init must be less than final "
+                f"(got rows {init_x}:{final_x}, cols {init_y}:{final_y})"
+            )
+
+        expected_shape = (final_x - init_x, final_y - init_y)
+        if other._shape != expected_shape:
+            raise ValueError(
+                f"Source matrix shape {other._shape} does not match "
+                f"region shape {expected_shape}"
+            )
+
+        self._data[init_x:final_x, init_y:final_y] = other._data
+        self._mask[init_x:final_x, init_y:final_y] = other._mask
+
     # =========================================================================
     # Filter Methods (using MatrixFilters)
     # =========================================================================

@@ -9,6 +9,7 @@ from .enums import (
     CellularDistanceFunction,
     CellularReturnType,
     DomainWarpType,
+    DomainWarpFractalType,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "CellularDistanceFunction",
     "CellularReturnType",
     "DomainWarpType",
+    "DomainWarpFractalType",
 ]
