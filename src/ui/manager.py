@@ -129,6 +129,14 @@ class UIManager:
         Returns:
             True if any widget consumed the event.
         """
+        # Overlay pass first — open popups (e.g. dropdowns) get priority so
+        # that clicks on their lists are not stolen by widgets drawn below them.
+        for widget in reversed(self._widgets):
+            if widget.handle_overlay_event(event):
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self._update_focus(event.pos[0], event.pos[1])
+                return True
+
         # Handle hover tracking
         if event.type == pygame.MOUSEMOTION:
             self._update_hover(event.pos[0], event.pos[1])
@@ -196,7 +204,11 @@ class UIManager:
 
     def draw(self, surface: pygame.Surface) -> None:
         """
-        Draw all visible widgets.
+        Draw all visible widgets, then draw overlay content on top.
+
+        The two-pass approach ensures that popup elements such as open
+        dropdowns are always rendered above every other widget regardless
+        of their position in the hierarchy.
 
         Args:
             surface: Pygame surface to draw on.
@@ -204,6 +216,11 @@ class UIManager:
         for widget in self._widgets:
             if widget.visible:
                 widget.draw(surface)
+
+        # Overlay pass — drawn after everything else, no clip restrictions.
+        for widget in self._widgets:
+            if widget.visible:
+                widget.draw_overlay(surface)
 
     def resize(self, width: int, height: int) -> None:
         """

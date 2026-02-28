@@ -128,61 +128,74 @@ class Dropdown(Widget):
 
     # -- Event handling -------------------------------------------------------
 
-    def handle_event(self, event: pygame.event.Event) -> bool:
-        if not self.visible or not self.enabled:
+    def handle_overlay_event(self, event: pygame.event.Event) -> bool:
+        """Handle list interactions with priority before normal event dispatch.
+
+        When the list is open, consume clicks inside it so that widgets drawn
+        below the list (e.g. another dropdown's HBox row) cannot steal them.
+        Outside clicks close the list without consuming the event so the click
+        can still reach its real target.
+        """
+        if super().handle_overlay_event(event):
+            return True
+
+        if not self.visible or not self.enabled or not self._open:
             return False
+
+        lr = self._list_rect()
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
-            abs_rect = self.absolute_rect
-
-            # Click on the main button area?
-            if abs_rect.collidepoint(mx, my):
-                self._open = not self._open
-                self._hovered_option = -1
-                if self._open:
-                    # Ensure selected item is visible
-                    self._ensure_visible(self._selected_index)
-                return True
-
-            # Click inside the open list?
-            if self._open:
-                lr = self._list_rect()
-                if lr.collidepoint(mx, my):
-                    rel_y = my - lr.y
-                    idx = self._scroll_offset + rel_y // self._item_height()
-                    if 0 <= idx < len(self._options):
-                        old = self._selected_index
-                        self._selected_index = idx
-                        self._open = False
-                        if idx != old and self._on_change_cb:
-                            self._on_change_cb(idx, self._options[idx])
-                    return True
-
-                # Click outside → close
-                self._open = False
-                return False
-
-        # Scroll wheel when open
-        if self._open and event.type == pygame.MOUSEWHEEL:
-            mx, my = pygame.mouse.get_pos()
-            lr = self._list_rect()
             if lr.collidepoint(mx, my):
+                rel_y = my - lr.y
+                idx = self._scroll_offset + rel_y // self._item_height()
+                if 0 <= idx < len(self._options):
+                    old = self._selected_index
+                    self._selected_index = idx
+                    self._open = False
+                    self._hovered_option = -1
+                    if idx != old and self._on_change_cb:
+                        self._on_change_cb(idx, self._options[idx])
+                else:
+                    self._open = False
+                return True  # Consume — prevent widgets behind the list from seeing this
+
+            # Click outside both the list and the button → close but don't consume
+            abs_rect = self.absolute_rect
+            if not abs_rect.collidepoint(mx, my):
+                self._open = False
+            return False
+
+        if event.type == pygame.MOUSEWHEEL:
+            if lr.collidepoint(*pygame.mouse.get_pos()):
                 if event.y > 0 and self._can_scroll_up():
                     self._scroll_offset -= 1
                 elif event.y < 0 and self._can_scroll_down():
                     self._scroll_offset += 1
                 return True
 
-        # Track hover inside open list
-        if self._open and event.type == pygame.MOUSEMOTION:
+        if event.type == pygame.MOUSEMOTION:
             mx, my = event.pos
-            lr = self._list_rect()
             if lr.collidepoint(mx, my):
-                rel_y = my - lr.y
-                self._hovered_option = self._scroll_offset + rel_y // self._item_height()
+                self._hovered_option = self._scroll_offset + (my - lr.y) // self._item_height()
             else:
                 self._hovered_option = -1
+
+        return False
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        if not self.visible or not self.enabled:
+            return False
+
+        # Only handle clicks on the button itself; list interactions are in handle_overlay_event.
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            abs_rect = self.absolute_rect
+            if abs_rect.collidepoint(event.pos[0], event.pos[1]):
+                self._open = not self._open
+                self._hovered_option = -1
+                if self._open:
+                    self._ensure_visible(self._selected_index)
+                return True
 
         return False
 
@@ -199,14 +212,16 @@ class Dropdown(Widget):
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
+        """Draw the dropdown button only.  The open list is drawn in draw_overlay."""
         if not self.visible:
             return
 
         abs_rect = self.absolute_rect
         font = pygame.font.Font(None, self._font_size)
 
-        # -- Main button ------------------------------------------------------
-        pygame.draw.rect(surface, self._bg_color, abs_rect, border_radius=self._border_radius)
+        # Button background
+        bg = self._hover_color if self._state.hovered and not self._open else self._bg_color
+        pygame.draw.rect(surface, bg, abs_rect, border_radius=self._border_radius)
         pygame.draw.rect(surface, self._border_color, abs_rect, width=1, border_radius=self._border_radius)
 
         # Selected text
@@ -221,40 +236,49 @@ class Dropdown(Widget):
         arr_rect = arr_surf.get_rect(midright=(abs_rect.right - 8, abs_rect.centery))
         surface.blit(arr_surf, arr_rect)
 
-        # -- Option list (drawn on top of everything) -------------------------
-        if self._open and self._options:
-            lr = self._list_rect()
-            ih = self._item_height()
-            visible = min(len(self._options), self._max_visible)
-
-            # Background
-            pygame.draw.rect(surface, self._bg_color, lr, border_radius=self._border_radius)
-            pygame.draw.rect(surface, self._border_color, lr, width=1, border_radius=self._border_radius)
-
-            for i in range(visible):
-                idx = self._scroll_offset + i
-                if idx >= len(self._options):
-                    break
-
-                item_rect = pygame.Rect(lr.x, lr.y + i * ih, lr.width, ih)
-
-                # Highlight
-                if idx == self._selected_index:
-                    pygame.draw.rect(surface, self._selected_color, item_rect)
-                elif idx == self._hovered_option:
-                    pygame.draw.rect(surface, self._hover_color, item_rect)
-
-                opt_surf = font.render(self._options[idx], True, self._text_color)
-                opt_rect = opt_surf.get_rect(midleft=(item_rect.x + 8, item_rect.centery))
-                surface.blit(opt_surf, opt_rect)
-
-            # Scroll indicators
-            if self._can_scroll_up():
-                up_surf = font.render("▲", True, (180, 180, 180))
-                surface.blit(up_surf, (lr.right - 18, lr.y + 2))
-            if self._can_scroll_down():
-                dn_surf = font.render("▼", True, (180, 180, 180))
-                surface.blit(dn_surf, (lr.right - 18, lr.bottom - ih + 2))
-
         self.draw_children(surface)
+
+    def draw_overlay(self, surface: pygame.Surface) -> None:
+        """Draw the open option list on top of all other widgets.
+
+        Called by UIManager after the full widget tree has been drawn so the
+        list is never obscured by sibling or parent widgets.
+        """
+        super().draw_overlay(surface)
+
+        if not self.visible or not self._open or not self._options:
+            return
+
+        font = pygame.font.Font(None, self._font_size)
+        lr = self._list_rect()
+        ih = self._item_height()
+        visible = min(len(self._options), self._max_visible)
+
+        # List background + border
+        pygame.draw.rect(surface, self._bg_color, lr, border_radius=self._border_radius)
+        pygame.draw.rect(surface, self._border_color, lr, width=1, border_radius=self._border_radius)
+
+        for i in range(visible):
+            idx = self._scroll_offset + i
+            if idx >= len(self._options):
+                break
+
+            item_rect = pygame.Rect(lr.x, lr.y + i * ih, lr.width, ih)
+
+            if idx == self._selected_index:
+                pygame.draw.rect(surface, self._selected_color, item_rect)
+            elif idx == self._hovered_option:
+                pygame.draw.rect(surface, self._hover_color, item_rect)
+
+            opt_surf = font.render(self._options[idx], True, self._text_color)
+            opt_rect = opt_surf.get_rect(midleft=(item_rect.x + 8, item_rect.centery))
+            surface.blit(opt_surf, opt_rect)
+
+        # Scroll indicators
+        if self._can_scroll_up():
+            up_surf = font.render("▲", True, (180, 180, 180))
+            surface.blit(up_surf, (lr.right - 18, lr.y + 2))
+        if self._can_scroll_down():
+            dn_surf = font.render("▼", True, (180, 180, 180))
+            surface.blit(dn_surf, (lr.right - 18, lr.bottom - ih + 2))
 

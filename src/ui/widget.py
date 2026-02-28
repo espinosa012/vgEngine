@@ -511,6 +511,49 @@ class Widget(ABC):
     # Utility Methods
     # -------------------------------------------------------------------------
 
+    def draw_overlay(self, surface: pygame.Surface) -> None:
+        """
+        Draw overlay content (open dropdowns, popups, tooltips) on top of
+        everything else.
+
+        Called by UIManager after the entire widget tree has been rendered
+        normally.  The default implementation propagates to all visible
+        children so any descendant can participate without needing a direct
+        reference to the manager.
+
+        Args:
+            surface: Pygame surface to draw on (no clip restrictions).
+        """
+        if not self._state.visible:
+            return
+        for child in self._children:
+            if child.visible:
+                child.draw_overlay(surface)
+
+    def handle_overlay_event(self, event: pygame.event.Event) -> bool:
+        """
+        Handle events for overlay content with priority over normal dispatch.
+
+        Called by UIManager *before* the regular handle_event pass so that
+        open popups (e.g. dropdown lists) can consume clicks that visually
+        land on them even when another widget in the normal tree occupies the
+        same screen area.
+
+        The default implementation propagates to all visible, enabled children
+        in reverse order (same as handle_event).  Override in widgets that
+        display overlay content (see Dropdown).
+
+        Returns:
+            True if the event was consumed — UIManager will skip the normal
+            handle_event dispatch for this event.
+        """
+        if not self._state.visible or not self._state.enabled:
+            return False
+        for child in reversed(self._children):
+            if child.handle_overlay_event(event):
+                return True
+        return False
+
     def draw_children(self, surface: pygame.Surface) -> None:
         """
         Draw all visible children.

@@ -26,8 +26,8 @@ from test_scenes.matrix_viewer_scene import MatrixViewerScene
 
 
 # Constantes
-WINDOW_WIDTH = 1100
-WINDOW_HEIGHT = 700
+WINDOW_WIDTH = 1440
+WINDOW_HEIGHT = 900
 FPS = 60
 
 
@@ -49,6 +49,8 @@ class BaseGameApp:
         # Estado
         self.running = True
         self.frame_count = 0
+
+
 
 
         # Crear y configurar la escena

@@ -297,27 +297,22 @@ class ScrollView(Container):
                 return True
 
         # --- Dispatch to children ---
-        # Only forward mouse positional events when the pointer is inside the
-        # viewport, so that clipped (invisible) children don't receive them.
-        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
-            abs_rect = self.absolute_rect
-            viewport_rect = pygame.Rect(
-                abs_rect.x + self._padding,
-                abs_rect.y + self._padding,
-                self.viewport_width,
-                self.viewport_height
-            )
-            if not viewport_rect.collidepoint(event.pos):
-                # Still update hover state for the container itself
-                self._handle_mouse_motion(event) if event.type == pygame.MOUSEMOTION else None
-                return False
-
+        # No viewport restriction here: children check their own contains_point.
+        # Removing the restriction allows open dropdown lists (drawn outside the
+        # clipped viewport via draw_overlay) to still receive click events.
         for child in reversed(self._children):
             if child.handle_event(event):
                 return True
 
-        # Fall back to container-level events (hover, etc.)
-        return super().handle_event(event)
+        # Handle container-level mouse events (hover tracking, etc.)
+        # We do NOT call super().handle_event() to avoid a second child dispatch.
+        if event.type == pygame.MOUSEMOTION:
+            return self._handle_mouse_motion(event)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            return self._handle_mouse_down(event)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            return self._handle_mouse_up(event)
+        return False
 
     # -------------------------------------------------------------------------
     # Drawing

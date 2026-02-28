@@ -80,7 +80,16 @@ TILE_SIZE = 4
 CAMERA_SPEED = 500
 ZOOM_SPEED = 1.5
 
-PANEL_WIDTH = 310
+PANEL_WIDTH = 400        # total panel width in pixels
+_SCROLL_PADDING = 10     # ScrollView padding (applied on all sides)
+_SCROLLBAR_W = 10        # width of the vertical scrollbar
+# Usable content width available to widgets inside the panel:
+#   PANEL_WIDTH - 2*padding - scrollbar
+PANEL_CONTENT_W = PANEL_WIDTH - 2 * _SCROLL_PADDING - _SCROLLBAR_W  # = 370
+
+ROW_LABEL_W = 128        # fixed width for the label column in a _row
+ROW_SPACING = 8          # horizontal gap between label and widget
+
 PANEL_BG = (30, 30, 45, 240)
 SECTION_BG = (40, 40, 58, 200)
 LABEL_COLOR = (190, 190, 210)
@@ -104,26 +113,43 @@ def _section_title(text: str) -> Label:
     return Label(text=text, font_size=20, color=TITLE_COLOR, auto_size=True)
 
 
-def _text_input(default: str = "0", w: int = 80) -> TextInput:
+def _section_spacer() -> Label:
+    """Small vertical gap between sections."""
+    return Label(text="", font_size=4, auto_size=True)
+
+
+def _text_input(default: str = "0") -> TextInput:
     return TextInput(
-        width=w, height=24, text=default, font_size=16, max_length=12,
+        width=80, height=26, text=default, font_size=16, max_length=20,
         bg_color=INPUT_BG, text_color=(255, 255, 255),
         border_color=INPUT_BORDER, focus_border_color=FOCUS_BORDER,
+        border_radius=4,
     )
 
 
-def _dropdown(options: List[str], index: int = 0, w: int = 180) -> Dropdown:
+def _dropdown(options: List[str], index: int = 0) -> Dropdown:
     return Dropdown(
-        width=w, height=24, options=options, selected_index=index,
+        width=180, height=26, options=options, selected_index=index,
         font_size=16, bg_color=INPUT_BG, text_color=(255, 255, 255),
         border_color=INPUT_BORDER, selected_color=(50, 130, 80),
         hover_color=(70, 70, 90), max_visible=6,
+        border_radius=4,
     )
 
 
-def _row(label_text: str, widget, label_w: int = 110) -> HBox:
-    """Label on the left, widget on the right."""
-    row = HBox(spacing=6, align='center', auto_size=True)
+def _row(label_text: str, widget, label_w: int = ROW_LABEL_W) -> HBox:
+    """Fixed-width label on the left; widget stretches to fill the remainder.
+
+    The row is exactly PANEL_CONTENT_W wide so it always fits the panel
+    viewport without overflowing or being clipped.
+    """
+    widget_w = PANEL_CONTENT_W - label_w - ROW_SPACING
+    widget.width = widget_w
+
+    row = HBox(
+        width=PANEL_CONTENT_W, height=widget.height,
+        spacing=ROW_SPACING, align='center', auto_size=False,
+    )
     lbl = _lbl(label_text)
     lbl.width = label_w
     row.add_child(lbl)
@@ -178,9 +204,10 @@ class NoiseEditorScene(BaseScene):
         self._ui = UIManager(sw, sh)
 
         # ── Left panel (scrollable controls) ────────────────────────────────
+        # Width = PANEL_CONTENT_W so items are left-aligned and never overflow.
         panel_vbox = VBox(
-            x=0, y=0, width=PANEL_WIDTH - 20,
-            spacing=6, align=VBox.ALIGN_LEFT,
+            x=0, y=0, width=PANEL_CONTENT_W,
+            spacing=8, align=VBox.ALIGN_LEFT,
             auto_size=True, padding=0,
         )
 
@@ -193,11 +220,13 @@ class NoiseEditorScene(BaseScene):
 
         scroll = ScrollView(
             x=0, y=0, width=PANEL_WIDTH, height=sh,
-            content_height=2000,
+            content_height=0,   # auto-calculate from children
             bg_color=PANEL_BG,
-            scroll_speed=28,
+            scroll_speed=30,
             show_scrollbar=True,
-            padding=10,
+            scrollbar_color=(110, 110, 140),
+            scrollbar_track_color=(45, 45, 60),
+            padding=_SCROLL_PADDING,
         )
         scroll.add_child(panel_vbox)
         self._ui.add(scroll)
@@ -207,7 +236,7 @@ class NoiseEditorScene(BaseScene):
     def _build_general_section(self, parent: VBox):
         parent.add_child(_section_title("─── General ───"))
 
-        inp_seed = _text_input("0", 100)
+        inp_seed = _text_input("0")
         self._ctrl["seed"] = inp_seed
         parent.add_child(_row("Seed", inp_seed))
 
@@ -215,46 +244,48 @@ class NoiseEditorScene(BaseScene):
         self._ctrl["noise_type"] = dd_noise
         parent.add_child(_row("Noise type", dd_noise))
 
-        inp_freq = _text_input("0.01", 100)
+        inp_freq = _text_input("0.01")
         self._ctrl["frequency"] = inp_freq
         parent.add_child(_row("Frequency", inp_freq))
 
-        inp_ox = _text_input("0", 80)
+        inp_ox = _text_input("0")
         self._ctrl["offset_x"] = inp_ox
         parent.add_child(_row("Offset X", inp_ox))
 
-        inp_oy = _text_input("0", 80)
+        inp_oy = _text_input("0")
         self._ctrl["offset_y"] = inp_oy
         parent.add_child(_row("Offset Y", inp_oy))
 
     def _build_fractal_section(self, parent: VBox):
+        parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Fractal ───"))
 
         dd_frac = _dropdown(FRACTAL_TYPES, 1)
         self._ctrl["fractal_type"] = dd_frac
         parent.add_child(_row("Fractal type", dd_frac))
 
-        inp_oct = _text_input("5", 60)
+        inp_oct = _text_input("5")
         self._ctrl["octaves"] = inp_oct
         parent.add_child(_row("Octaves", inp_oct))
 
-        inp_lac = _text_input("2.0", 80)
+        inp_lac = _text_input("2.0")
         self._ctrl["lacunarity"] = inp_lac
         parent.add_child(_row("Lacunarity", inp_lac))
 
-        inp_per = _text_input("0.5", 80)
+        inp_per = _text_input("0.5")
         self._ctrl["persistence"] = inp_per
         parent.add_child(_row("Persistence", inp_per))
 
-        inp_ws = _text_input("0.0", 80)
+        inp_ws = _text_input("0.0")
         self._ctrl["weighted_strength"] = inp_ws
         parent.add_child(_row("Weighted str.", inp_ws))
 
-        inp_pp = _text_input("2.0", 80)
+        inp_pp = _text_input("2.0")
         self._ctrl["ping_pong_strength"] = inp_pp
         parent.add_child(_row("Ping-pong str.", inp_pp))
 
     def _build_cellular_section(self, parent: VBox):
+        parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Cellular ───"))
 
         dd_dist = _dropdown(CELLULAR_DIST_FUNCS, 1)
@@ -265,11 +296,12 @@ class NoiseEditorScene(BaseScene):
         self._ctrl["cellular_return_type"] = dd_ret
         parent.add_child(_row("Return type", dd_ret))
 
-        inp_jit = _text_input("1.0", 80)
+        inp_jit = _text_input("1.0")
         self._ctrl["cellular_jitter"] = inp_jit
         parent.add_child(_row("Jitter", inp_jit))
 
     def _build_domain_warp_section(self, parent: VBox):
+        parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Domain Warp ───"))
 
         cb_dw = Checkbox(
@@ -283,11 +315,11 @@ class NoiseEditorScene(BaseScene):
         self._ctrl["domain_warp_type"] = dd_dwt
         parent.add_child(_row("Warp type", dd_dwt))
 
-        inp_amp = _text_input("30.0", 80)
+        inp_amp = _text_input("30.0")
         self._ctrl["domain_warp_amplitude"] = inp_amp
         parent.add_child(_row("Amplitude", inp_amp))
 
-        inp_dwf = _text_input("0.05", 80)
+        inp_dwf = _text_input("0.05")
         self._ctrl["domain_warp_frequency"] = inp_dwf
         parent.add_child(_row("Frequency", inp_dwf))
 
@@ -295,36 +327,51 @@ class NoiseEditorScene(BaseScene):
         self._ctrl["domain_warp_fractal_type"] = dd_dwft
         parent.add_child(_row("Fractal type", dd_dwft))
 
-        inp_dwo = _text_input("5", 60)
+        inp_dwo = _text_input("5")
         self._ctrl["domain_warp_fractal_octaves"] = inp_dwo
         parent.add_child(_row("Octaves", inp_dwo))
 
-        inp_dwl = _text_input("2.0", 80)
+        inp_dwl = _text_input("2.0")
         self._ctrl["domain_warp_fractal_lacunarity"] = inp_dwl
         parent.add_child(_row("Lacunarity", inp_dwl))
 
-        inp_dwg = _text_input("0.5", 80)
+        inp_dwg = _text_input("0.5")
         self._ctrl["domain_warp_fractal_gain"] = inp_dwg
         parent.add_child(_row("Gain", inp_dwg))
 
     def _build_preview_section(self, parent: VBox):
+        parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Preview size ───"))
 
-        inp_w = _text_input("256", 80)
+        inp_w = _text_input("256")
         self._ctrl["preview_w"] = inp_w
         parent.add_child(_row("Width", inp_w))
 
-        inp_h = _text_input("256", 80)
+        inp_h = _text_input("256")
         self._ctrl["preview_h"] = inp_h
         parent.add_child(_row("Height", inp_h))
 
     def _build_buttons(self, parent: VBox):
-        parent.add_child(Label(text="", font_size=6, auto_size=True))  # spacer
+        parent.add_child(_section_spacer())
 
-        btn_row = HBox(spacing=10, align='center', auto_size=True)
+        # Preset dropdown (if config.json has presets)
+        noise_names = self._load_noise_names()
+        if noise_names:
+            parent.add_child(_section_title("─── Preset ───"))
+            dd_presets = _dropdown(noise_names, 0)
+            self._ctrl["preset_dropdown"] = dd_presets
+            parent.add_child(_row("Preset", dd_presets))
+
+        parent.add_child(_section_spacer())
+
+        # Action buttons — centered in the panel
+        btn_row = HBox(
+            width=PANEL_CONTENT_W, height=36,
+            spacing=12, align='center', justify='center', auto_size=False,
+        )
 
         btn_update = Button(
-            width=120, height=32, text="Actualizar", font_size=18,
+            width=160, height=36, text="Actualizar", font_size=18,
             bg_color=(50, 130, 80), hover_color=(70, 160, 100),
             pressed_color=(40, 100, 65), border_radius=6,
         )
@@ -332,7 +379,7 @@ class NoiseEditorScene(BaseScene):
         btn_row.add_child(btn_update)
 
         btn_load = Button(
-            width=120, height=32, text="Cargar JSON", font_size=18,
+            width=160, height=36, text="Cargar JSON", font_size=18,
             bg_color=(60, 90, 160), hover_color=(80, 115, 190),
             pressed_color=(45, 70, 130), border_radius=6,
         )
@@ -341,14 +388,9 @@ class NoiseEditorScene(BaseScene):
 
         parent.add_child(btn_row)
 
-        # Dropdown to pick noise from config.json
-        noise_names = self._load_noise_names()
-        if noise_names:
-            dd_presets = _dropdown(noise_names, 0, 180)
-            self._ctrl["preset_dropdown"] = dd_presets
-            parent.add_child(_row("Preset", dd_presets))
+        parent.add_child(_section_spacer())
 
-        # Error / info label
+        # Info / error label
         self._info_label = Label(text="", font_size=16, color=(255, 200, 80), auto_size=True)
         parent.add_child(self._info_label)
 
