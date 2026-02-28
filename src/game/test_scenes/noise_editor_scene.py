@@ -184,6 +184,7 @@ class NoiseEditorScene(BaseScene):
         self._tilemap: Optional[TileMap] = None
         self._tileset: Optional[TileSet] = None
         self._camera: Optional[Camera] = None
+        self._matrix = None  # Matrix2D, persists across updates
         self._map_w = 0
         self._map_h = 0
 
@@ -211,6 +212,7 @@ class NoiseEditorScene(BaseScene):
         self._tilemap = None
         self._tileset = None
         self._camera = None
+        self._matrix = None
 
     def on_resize(self, sw: int, sh: int) -> None:
         """Handle window resize: update UIManager, panel height and camera."""
@@ -396,15 +398,15 @@ class NoiseEditorScene(BaseScene):
 
     def _build_preview_section(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
-        parent.add_child(_section_title("─── Preview size ───"))
+        parent.add_child(_section_title("─── Dimensiones ───"))
 
         inp_w = _text_input("256")
         self._ctrl["preview_w"] = inp_w
-        parent.add_child(_row("Width", inp_w, content_w=content_w))
+        parent.add_child(_row("Ancho (X)", inp_w, content_w=content_w))
 
         inp_h = _text_input("256")
         self._ctrl["preview_h"] = inp_h
-        parent.add_child(_row("Height", inp_h, content_w=content_w))
+        parent.add_child(_row("Alto (Y)", inp_h, content_w=content_w))
 
     def _build_buttons(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
@@ -607,7 +609,7 @@ class NoiseEditorScene(BaseScene):
         """Read controls, build noise, generate matrix, refresh tilemap."""
         cfg = self._read_config()
 
-        # Preview size
+        # Dimensions
         try:
             pw = max(1, min(4096, int(self._ctrl["preview_w"].text)))
             ph = max(1, min(4096, int(self._ctrl["preview_h"].text)))
@@ -620,11 +622,49 @@ class NoiseEditorScene(BaseScene):
 
         try:
             noise = NoiseGenerator2D.from_dict(cfg)
-            matrix = Matrix2D.create_from_noise(noise, ph, pw)
         except Exception as e:
             self._info_label.text = f"Error: {e}"
             print(f"[NoiseEditor] {e}")
             return
+
+        # Decide whether to reuse the existing matrix or regenerate
+        if self._matrix is not None:
+            old_rows, old_cols = self._matrix._shape  # (ph, pw)
+            new_rows, new_cols = ph, pw
+
+            if new_rows > old_rows or new_cols > old_cols:
+                # Size grew: resize in-place and fill only the new cells
+                try:
+                    self._matrix.resize((new_rows, new_cols), default_value=None)
+                    # New rows strip: rows [old_rows, new_rows) × all cols
+                    if new_rows > old_rows:
+                        self._matrix.fill_values_from_noise_region(
+                            noise, 0, new_cols, old_rows, new_rows
+                        )
+                    # New cols in old rows: rows [0, old_rows) × cols [old_cols, new_cols)
+                    if new_cols > old_cols:
+                        self._matrix.fill_values_from_noise_region(
+                            noise, old_cols, new_cols, 0, min(old_rows, new_rows)
+                        )
+                except Exception as e:
+                    self._info_label.text = f"Error: {e}"
+                    print(f"[NoiseEditor] {e}")
+                    return
+            else:
+                # Same size or smaller: trim and regenerate
+                try:
+                    self._matrix = Matrix2D.create_from_noise(noise, ph, pw)
+                except Exception as e:
+                    self._info_label.text = f"Error: {e}"
+                    print(f"[NoiseEditor] {e}")
+                    return
+        else:
+            try:
+                self._matrix = Matrix2D.create_from_noise(noise, ph, pw)
+            except Exception as e:
+                self._info_label.text = f"Error: {e}"
+                print(f"[NoiseEditor] {e}")
+                return
 
         self._map_w = pw
         self._map_h = ph
@@ -638,7 +678,7 @@ class NoiseEditorScene(BaseScene):
                 white_to_black=True,
             )
 
-        # Tilemap
+        # Tilemap (recreated whenever dimensions change)
         self._tilemap = TileMap(
             width=pw, height=ph,
             tile_size=(TILE_SIZE, TILE_SIZE),
@@ -646,27 +686,26 @@ class NoiseEditorScene(BaseScene):
         self._tilemap.tileset = self._tileset
 
         tile_ids = np.clip(
-            (matrix._data * (GRAYSCALE_STEPS - 1)).astype(int),
+            (self._matrix._data * (GRAYSCALE_STEPS - 1)).astype(int),
             0, GRAYSCALE_STEPS - 1,
         )
         for r in range(ph):
             for c in range(pw):
                 self._tilemap.set_tile(c, r, int(tile_ids[r, c]))
 
-        # Camera
-        screen = pygame.display.get_surface()
-        sw, sh = screen.get_size()
-        world_w = pw * TILE_SIZE
-        world_h = ph * TILE_SIZE
-        # Offset the camera origin so the map starts after the panel
-        cam_x = max(0.0, (world_w - (sw - self._panel_width)) / 2)
-        cam_y = max(0.0, (world_h - sh) / 2)
-
-        self._camera = Camera(
-            x=cam_x, y=cam_y,
-            width=sw, height=sh,
-            zoom=1.0, min_zoom=0.05, max_zoom=20.0,
-        )
+        # Camera: create only on first call — preserve position/zoom afterwards
+        if self._camera is None:
+            screen = pygame.display.get_surface()
+            sw, sh = screen.get_size()
+            world_w = pw * TILE_SIZE
+            world_h = ph * TILE_SIZE
+            cam_x = max(0.0, (world_w - (sw - self._panel_width)) / 2)
+            cam_y = max(0.0, (world_h - sh) / 2)
+            self._camera = Camera(
+                x=cam_x, y=cam_y,
+                width=sw, height=sh,
+                zoom=1.0, min_zoom=0.05, max_zoom=20.0,
+            )
 
         self._info_label.text = f"Generado {ph}×{pw}"
         print(f"[NoiseEditor] Generated {ph}×{pw}")

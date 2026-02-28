@@ -694,6 +694,71 @@ class Matrix2D:
                     self._data[r, c] = value
                     self._mask[r, c] = True
 
+    def fill_values_from_noise_region(
+        self,
+        noise,
+        init_x: int,
+        final_x: int,
+        init_y: int,
+        final_y: int,
+    ) -> None:
+        """
+        Fill a sub-region of the matrix with noise values.
+
+        Samples the noise generator at the grid coordinates corresponding to
+        the target region and writes the results directly into that region.
+        Noise coordinates match those used by ``create_from_noise``, so the
+        values are consistent when expanding an existing matrix.
+
+        Args:
+            noise: Noise generator (must have ``generate_region`` or
+                   ``get_value_at``).
+            init_x: First column index to fill (inclusive).
+            final_x: Last column index to fill (exclusive).
+            init_y: First row index to fill (inclusive).
+            final_y: Last row index to fill (exclusive).
+
+        Raises:
+            ValueError: If the region is outside the matrix bounds.
+        """
+        rows, cols = self._shape
+
+        if init_x < 0 or final_x > cols or init_y < 0 or final_y > rows:
+            raise ValueError(
+                f"Region ({init_x},{init_y})-({final_x},{final_y}) is out of "
+                f"bounds for matrix of shape {self._shape}"
+            )
+
+        if init_x >= final_x or init_y >= final_y:
+            return
+
+        n_rows = final_y - init_y
+        n_cols = final_x - init_x
+
+        if hasattr(noise, 'generate_region'):
+            region = [
+                (float(init_y), float(final_y - 1), n_rows),
+                (float(init_x), float(final_x - 1), n_cols),
+            ]
+            noise_data = noise.generate_region(region)
+        elif hasattr(noise, 'get_values_vectorized'):
+            row_coords = np.arange(init_y, final_y, dtype=np.float64)
+            col_coords = np.arange(init_x, final_x, dtype=np.float64)
+            rr, cc = np.meshgrid(row_coords, col_coords, indexing='ij')
+            noise_data = noise.get_values_vectorized(
+                rr.ravel(), cc.ravel()
+            ).reshape(n_rows, n_cols)
+        else:
+            noise_data = np.empty((n_rows, n_cols), dtype=np.float64)
+            for i in range(n_rows):
+                for j in range(n_cols):
+                    noise_data[i, j] = noise.get_value_at(
+                        (float(init_y + i), float(init_x + j))
+                    )
+
+        self._data[init_y:final_y, init_x:final_x] = noise_data
+        self._mask[init_y:final_y, init_x:final_x] = True
+
     def min(self, ignore_unassigned: bool = True) -> Optional[float]:
         """Get minimum value."""
         if ignore_unassigned:
