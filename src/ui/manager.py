@@ -129,6 +129,13 @@ class UIManager:
         Returns:
             True if any widget consumed the event.
         """
+        # Tab navigation — intercepted before anything else so open overlays
+        # (e.g. Dropdown lists) are closed gracefully when Tab is pressed.
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+            backward = bool(event.mod & pygame.KMOD_SHIFT)
+            self._tab_navigate(backward)
+            return True
+
         # Overlay pass first — open popups (e.g. dropdowns) get priority so
         # that clicks on their lists are not stolen by widgets drawn below them.
         for widget in reversed(self._widgets):
@@ -156,6 +163,44 @@ class UIManager:
                 self._focused_widget = None
 
         return False
+
+    # -------------------------------------------------------------------------
+    # Tab navigation helpers
+    # -------------------------------------------------------------------------
+
+    def _collect_focusable(self) -> List[Widget]:
+        """Return all focusable, visible, enabled widgets in depth-first order."""
+        result: List[Widget] = []
+        for widget in self._widgets:
+            self._collect_focusable_recursive(widget, result)
+        return result
+
+    def _collect_focusable_recursive(self, widget: Widget, result: List[Widget]) -> None:
+        if not widget.visible or not widget.enabled:
+            return
+        if getattr(widget, '_focusable', False):
+            result.append(widget)
+        for child in widget._children:
+            self._collect_focusable_recursive(child, result)
+
+    def _tab_navigate(self, backward: bool = False) -> None:
+        """Move keyboard focus to the next (or previous) focusable widget."""
+        focusable = self._collect_focusable()
+        if not focusable:
+            return
+
+        if self._focused_widget and self._focused_widget in focusable:
+            idx = focusable.index(self._focused_widget)
+            next_idx = (idx + (-1 if backward else 1)) % len(focusable)
+        else:
+            next_idx = len(focusable) - 1 if backward else 0
+
+        next_widget = focusable[next_idx]
+        if self._focused_widget and self._focused_widget is not next_widget:
+            self._focused_widget.blur()
+
+        next_widget.focus()
+        self._focused_widget = next_widget
 
     def _update_hover(self, x: int, y: int) -> None:
         """Update hover state based on mouse position."""

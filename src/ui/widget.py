@@ -47,6 +47,10 @@ class Widget(ABC):
     - update(): Update widget logic
     """
 
+    # Set to True in interactive leaf widgets (TextInput, Dropdown, Button…)
+    # so that UIManager's Tab navigation includes them.
+    _focusable: bool = False
+
     def __init__(
         self,
         x: int = 0,

@@ -33,6 +33,8 @@ class Dropdown(Widget):
         dd.on_change(lambda idx, name: print(f"Selected: {name}"))
     """
 
+    _focusable = True
+
     def __init__(
         self,
         x: int = 0,
@@ -183,11 +185,83 @@ class Dropdown(Widget):
 
         return False
 
+    def blur(self) -> None:
+        """Close the list when focus is lost."""
+        super().blur()
+        self._open = False
+        self._hovered_option = -1
+
     def handle_event(self, event: pygame.event.Event) -> bool:
         if not self.visible or not self.enabled:
             return False
 
-        # Only handle clicks on the button itself; list interactions are in handle_overlay_event.
+        # ── Keyboard handling when focused ────────────────────────────────────
+        if self.focused and event.type == pygame.KEYDOWN:
+            # Tab falls through to UIManager
+            if event.key == pygame.K_TAB:
+                return False
+
+            if self._open:
+                if event.key == pygame.K_UP:
+                    if self._hovered_option == -1:
+                        self._hovered_option = self._selected_index
+                    if self._hovered_option > 0:
+                        self._hovered_option -= 1
+                    self._ensure_visible(self._hovered_option)
+                    return True
+
+                if event.key == pygame.K_DOWN:
+                    if self._hovered_option == -1:
+                        self._hovered_option = self._selected_index
+                    if self._hovered_option < len(self._options) - 1:
+                        self._hovered_option += 1
+                    self._ensure_visible(self._hovered_option)
+                    return True
+
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    target = self._hovered_option if self._hovered_option != -1 else self._selected_index
+                    if 0 <= target < len(self._options):
+                        old = self._selected_index
+                        self._selected_index = target
+                        self._open = False
+                        self._hovered_option = -1
+                        if self._selected_index != old and self._on_change_cb:
+                            self._on_change_cb(self._selected_index, self._options[self._selected_index])
+                    return True
+
+                if event.key == pygame.K_ESCAPE:
+                    self._open = False
+                    self._hovered_option = -1
+                    return True
+
+            else:
+                # Closed — Space or Enter opens the list
+                if event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self._open = True
+                    self._hovered_option = self._selected_index
+                    self._ensure_visible(self._hovered_option)
+                    return True
+
+                # Up/Down changes selection directly without opening
+                if event.key == pygame.K_UP:
+                    if self._selected_index > 0:
+                        self._selected_index -= 1
+                        if self._on_change_cb:
+                            self._on_change_cb(self._selected_index, self._options[self._selected_index])
+                    return True
+
+                if event.key == pygame.K_DOWN:
+                    if self._selected_index < len(self._options) - 1:
+                        self._selected_index += 1
+                        if self._on_change_cb:
+                            self._on_change_cb(self._selected_index, self._options[self._selected_index])
+                    return True
+
+                if event.key == pygame.K_ESCAPE:
+                    self.blur()
+                    return True
+
+        # ── Mouse: click on button toggles list ───────────────────────────────
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             abs_rect = self.absolute_rect
             if abs_rect.collidepoint(event.pos[0], event.pos[1]):
@@ -222,7 +296,15 @@ class Dropdown(Widget):
         # Button background
         bg = self._hover_color if self._state.hovered and not self._open else self._bg_color
         pygame.draw.rect(surface, bg, abs_rect, border_radius=self._border_radius)
-        pygame.draw.rect(surface, self._border_color, abs_rect, width=1, border_radius=self._border_radius)
+
+        # Border: bright when focused via keyboard, normal otherwise
+        if self.focused:
+            border_col = (100, 160, 255)
+            border_w = 2
+        else:
+            border_col = self._border_color
+            border_w = 1
+        pygame.draw.rect(surface, border_col, abs_rect, width=border_w, border_radius=self._border_radius)
 
         # Selected text
         text = self.selected_text or "—"

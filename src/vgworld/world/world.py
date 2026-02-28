@@ -7,6 +7,8 @@ from virigir_math_utilities import Matrix2D
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "world_configs.toml"
 
+# TODO: cuando implementemos las pipelines, pedir un README.md del world
+
 class WorldNoise(Enum):
     BaseElevation = "Continentality"
     Continentality = "Continentality"
@@ -30,19 +32,23 @@ class WorldParameterName(Enum):
 
 
 class WorldMatrixName(Enum):
-    # todo: faltan más
+    # todo: faltan más. quizás deberíamos definirlas en el json, teniendo un enum para mantenerlas a todas
     Latitude = "Latitude"
+
     Elevation = "Elevation"
     ContinentalElevation = "ContinentalElevation"
     IsVolcanicLand = "IsVolcanicLand"
     IsContinent = "IsContinent"
+
     River = "River"
     RiverBirthPositions = "RiverBirthPositions"
     RiverFlow = "RiverFlow"
+
     Temperature = "Temperature"
 
 
 class WorldGenerationStage(Enum):
+    # TODO: quizás podríamos definir esto también en el json, para poder agregar etapas sin tocar código.
     Latitude = 0
     Elevation = 1
     River = 2

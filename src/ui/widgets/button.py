@@ -28,6 +28,8 @@ class Button(Widget):
         )
     """
 
+    _focusable = True
+
     def __init__(
         self,
         x: int = 0,
@@ -137,6 +139,24 @@ class Button(Widget):
         self._rendered_text = font.render(self._text, True, color)
         self._needs_render = False
         self._last_render_color = color
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """Handle events; Space/Enter activates the button when focused."""
+        if not self._state.visible or not self._state.enabled:
+            return False
+
+        if self.focused and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_TAB:
+                return False
+            if event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER):
+                if self._on_click:
+                    self._on_click(self)
+                return True
+            if event.key == pygame.K_ESCAPE:
+                self.blur()
+                return True
+
+        return super().handle_event(event)
 
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the button."""
