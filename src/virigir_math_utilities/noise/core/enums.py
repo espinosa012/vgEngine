@@ -1,29 +1,29 @@
 """
 Enumerations for vgNoise library.
 
-This module contains all enum types used across the noise generation library,
-compatible with Godot's FastNoiseLite where applicable.
+Enum values match FastNoiseLite exactly so that integer values from
+config.json map to the correct noise algorithms.
 """
 
 from enum import Enum
 
 
 class NoiseType(Enum):
-    """Supported noise algorithms."""
-    PERLIN = 0
-    SIMPLEX = 1
-    SIMPLEX_SMOOTH = 2
-    CELLULAR = 3
-    VALUE_CUBIC = 4
-    VALUE = 5
+    """Supported noise algorithms (matches FastNoiseLite enum ordering)."""
+    OPEN_SIMPLEX_2 = 0   # FastNoiseLite: NoiseType_OpenSimplex2
+    OPEN_SIMPLEX_2S = 1  # FastNoiseLite: NoiseType_OpenSimplex2S
+    CELLULAR = 2         # FastNoiseLite: NoiseType_Cellular
+    PERLIN = 3           # FastNoiseLite: NoiseType_Perlin
+    VALUE_CUBIC = 4      # FastNoiseLite: NoiseType_ValueCubic
+    VALUE = 5            # FastNoiseLite: NoiseType_Value
 
 
 class FractalType(Enum):
-    """Fractal combination types compatible with Godot FastNoiseLite."""
+    """Fractal combination types compatible with FastNoiseLite."""
     NONE = 0        # Single octave, no fractal
-    FBM = 1         # Fractal Brownian Motion (standard layering)
-    RIDGED = 2      # Ridged multifractal (creates ridge-like features)
-    PING_PONG = 3   # Ping-pong effect (creates terraced/banded features)
+    FBM = 1         # Fractal Brownian Motion
+    RIDGED = 2      # Ridged multifractal
+    PING_PONG = 3   # Ping-pong / terraced
 
 
 class CellularDistanceFunction(Enum):
@@ -46,15 +46,14 @@ class CellularReturnType(Enum):
 
 
 class DomainWarpType(Enum):
-    """Domain warp types compatible with Godot FastNoiseLite."""
-    SIMPLEX = 0
-    SIMPLEX_REDUCED = 1
+    """Domain warp types compatible with FastNoiseLite."""
+    OPEN_SIMPLEX_2 = 0
+    OPEN_SIMPLEX_2_REDUCED = 1
     BASIC_GRID = 2
 
 
 class DomainWarpFractalType(Enum):
-    """Fractal types for domain warp, compatible with Godot FastNoiseLite."""
-    NONE = 0        # Single iteration, no fractal
-    PROGRESSIVE = 1  # Warp is applied progressively with each octave
-    INDEPENDENT = 2  # Each octave warps independently
-
+    """Fractal types for domain warp."""
+    NONE = 0        # Single iteration
+    PROGRESSIVE = 1  # Progressive (warp accumulates each octave)
+    INDEPENDENT = 2  # Independent (each octave warps original coords)

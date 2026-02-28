@@ -52,7 +52,7 @@ class NoiseGenerator2D(NoiseGenerator):
         "cellular_jitter": 1.0,
         # Domain warp
         "domain_warp_enabled": 0,
-        "domain_warp_type": DomainWarpType.SIMPLEX.value,
+        "domain_warp_type": DomainWarpType.OPEN_SIMPLEX_2.value,
         "domain_warp_amplitude": 30.0,
         "domain_warp_frequency": 0.05,
         "domain_warp_fractal_type": DomainWarpFractalType.NONE.value,
@@ -108,73 +108,44 @@ class NoiseGenerator2D(NoiseGenerator):
         """
         return DomainWarp2D.from_dict(config, seed=config.get("seed", 0))
 
+    # Map old enum names to new ones for backward compatibility
+    _NOISE_TYPE_COMPAT = {
+        "SIMPLEX": "OPEN_SIMPLEX_2",
+        "SIMPLEX_SMOOTH": "OPEN_SIMPLEX_2S",
+    }
+
     def _create_generator_from_config(self, config: Dict[str, Any]) -> NoiseGenerator:
         """
         Create the appropriate noise generator based on the configuration.
 
-        Args:
-            config: Dictionary with noise configuration.
-
-        Returns:
-            A noise generator instance.
-
-        Raises:
-            NotImplementedError: If the requested noise type is not yet implemented.
+        Uses FastNoise2D for all noise types, matching FastNoiseLite output exactly.
         """
-        noise_type = NoiseType[config.get("noise_type", "PERLIN")]
+        from .fastnoise2d import FastNoise2D
 
-        # Common parameters
-        common_params = {
-            "seed": config.get("seed"),
-            "frequency": config.get("frequency", 0.01),
-            "offset": (config.get("offset_x", 0.0), config.get("offset_y", 0.0)),
-            "fractal_type": FractalType[config.get("fractal_type", "FBM")],
-            "octaves": config.get("octaves", 5),
-            "lacunarity": config.get("lacunarity", 2.0),
-            "persistence": config.get("persistence", 0.5),
-            "weighted_strength": config.get("weighted_strength", 0.0),
-            "ping_pong_strength": config.get("ping_pong_strength", 2.0),
-        }
+        raw_nt = config.get("noise_type", "PERLIN")
+        raw_nt = self._NOISE_TYPE_COMPAT.get(raw_nt, raw_nt)
+        noise_type = NoiseType[raw_nt]
+        fractal_type = FractalType[config.get("fractal_type", "FBM")]
 
-        if noise_type == NoiseType.PERLIN:
-            from .perlin2d import PerlinNoise2D
-            return PerlinNoise2D(**common_params)
-
-        elif noise_type == NoiseType.SIMPLEX:
-            from .opensimplex2d import OpenSimplexNoise2D
-            return OpenSimplexNoise2D(**common_params)
-
-        elif noise_type == NoiseType.SIMPLEX_SMOOTH:
-            from .simplexsmooth2d import SimplexSmoothNoise2D
-            return SimplexSmoothNoise2D(**common_params)
-
-        elif noise_type == NoiseType.CELLULAR:
-            from .cellular2d import CellularNoise2D
-            cellular_params = {
-                **common_params,
-                "distance_function": CellularDistanceFunction[
-                    config.get("cellular_distance_function", "EUCLIDEAN_SQUARED")
-                ],
-                "return_type": CellularReturnType[
-                    config.get("cellular_return_type", "DISTANCE")
-                ],
-                "jitter": config.get("cellular_jitter", 1.0),
-            }
-            return CellularNoise2D(**cellular_params)
-
-        elif noise_type == NoiseType.VALUE_CUBIC:
-            from .valuecubic2d import ValueCubicNoise2D
-            return ValueCubicNoise2D(**common_params)
-
-        elif noise_type == NoiseType.VALUE:
-            from .value2d import ValueNoise2D
-            return ValueNoise2D(**common_params)
-
-        else:
-            raise NotImplementedError(
-                f"Noise type {noise_type.name} is not yet implemented. "
-                f"Currently supported: PERLIN, SIMPLEX, SIMPLEX_SMOOTH, CELLULAR, VALUE_CUBIC, VALUE"
-            )
+        return FastNoise2D(
+            seed=config.get("seed", 0) or 0,
+            noise_type=noise_type,
+            frequency=config.get("frequency", 0.01),
+            offset=(config.get("offset_x", 0.0), config.get("offset_y", 0.0)),
+            fractal_type=fractal_type,
+            octaves=config.get("octaves", 5),
+            lacunarity=config.get("lacunarity", 2.0),
+            gain=config.get("persistence", 0.5),
+            weighted_strength=config.get("weighted_strength", 0.0),
+            ping_pong_strength=config.get("ping_pong_strength", 2.0),
+            cellular_distance_function=CellularDistanceFunction[
+                config.get("cellular_distance_function", "EUCLIDEAN_SQUARED")
+            ],
+            cellular_return_type=CellularReturnType[
+                config.get("cellular_return_type", "DISTANCE")
+            ],
+            cellular_jitter=config.get("cellular_jitter", 1.0),
+        )
 
     def _create_generator(
         self,

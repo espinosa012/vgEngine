@@ -80,15 +80,19 @@ TILE_SIZE = 4
 CAMERA_SPEED = 500
 ZOOM_SPEED = 1.5
 
-PANEL_WIDTH = 400        # total panel width in pixels
+PANEL_WIDTH = 400        # default panel width in pixels
 _SCROLL_PADDING = 10     # ScrollView padding (applied on all sides)
 _SCROLLBAR_W = 10        # width of the vertical scrollbar
-# Usable content width available to widgets inside the panel:
-#   PANEL_WIDTH - 2*padding - scrollbar
+# Usable content width for the default panel width (kept for default args):
 PANEL_CONTENT_W = PANEL_WIDTH - 2 * _SCROLL_PADDING - _SCROLLBAR_W  # = 370
 
 ROW_LABEL_W = 128        # fixed width for the label column in a _row
 ROW_SPACING = 8          # horizontal gap between label and widget
+
+# Divider constants
+_PANEL_MIN_W = 150       # minimum panel width
+_DIVIDER_W = 4           # visible divider bar width in pixels
+_DIVIDER_HIT_W = 10      # wider hit area for easier grabbing
 
 PANEL_BG = (30, 30, 45, 240)
 SECTION_BG = (40, 40, 58, 200)
@@ -137,17 +141,18 @@ def _dropdown(options: List[str], index: int = 0) -> Dropdown:
     )
 
 
-def _row(label_text: str, widget, label_w: int = ROW_LABEL_W) -> HBox:
+def _row(label_text: str, widget, label_w: int = ROW_LABEL_W,
+         content_w: int = PANEL_CONTENT_W) -> HBox:
     """Fixed-width label on the left; widget stretches to fill the remainder.
 
-    The row is exactly PANEL_CONTENT_W wide so it always fits the panel
+    The row is exactly content_w wide so it always fits the panel
     viewport without overflowing or being clipped.
     """
-    widget_w = PANEL_CONTENT_W - label_w - ROW_SPACING
+    widget_w = max(50, content_w - label_w - ROW_SPACING)
     widget.width = widget_w
 
     row = HBox(
-        width=PANEL_CONTENT_W, height=widget.height,
+        width=content_w, height=widget.height,
         spacing=ROW_SPACING, align='center', auto_size=False,
     )
     lbl = _lbl(label_text)
@@ -173,6 +178,7 @@ class NoiseEditorScene(BaseScene):
 
         # UI
         self._ui: Optional[UIManager] = None
+        self._scroll_view: Optional[ScrollView] = None
 
         # Viewer
         self._tilemap: Optional[TileMap] = None
@@ -183,6 +189,14 @@ class NoiseEditorScene(BaseScene):
 
         # Controls – will be populated in _build_ui
         self._ctrl: Dict[str, Any] = {}
+
+        # Panel width (user-resizable)
+        self._panel_width: int = PANEL_WIDTH
+
+        # Divider drag state
+        self._dragging_divider: bool = False
+        self._divider_start_x: int = 0
+        self._divider_start_panel_w: int = 0
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -198,28 +212,42 @@ class NoiseEditorScene(BaseScene):
         self._tileset = None
         self._camera = None
 
+    def on_resize(self, sw: int, sh: int) -> None:
+        """Handle window resize: update UIManager, panel height and camera."""
+        if self._ui:
+            self._ui.resize(sw, sh)
+        if self._scroll_view:
+            self._scroll_view.height = sh
+        if self._camera:
+            self._camera.width = sw
+            self._camera.height = sh
+
     # -- UI construction -----------------------------------------------------
+
+    def _panel_content_w(self) -> int:
+        """Usable width inside the scroll view for the current panel width."""
+        return max(50, self._panel_width - 2 * _SCROLL_PADDING - _SCROLLBAR_W)
 
     def _build_ui(self, sw: int, sh: int):
         self._ui = UIManager(sw, sh)
+        content_w = self._panel_content_w()
 
         # ── Left panel (scrollable controls) ────────────────────────────────
-        # Width = PANEL_CONTENT_W so items are left-aligned and never overflow.
         panel_vbox = VBox(
-            x=0, y=0, width=PANEL_CONTENT_W,
+            x=0, y=0, width=content_w,
             spacing=8, align=VBox.ALIGN_LEFT,
             auto_size=True, padding=0,
         )
 
-        self._build_general_section(panel_vbox)
-        self._build_fractal_section(panel_vbox)
-        self._build_cellular_section(panel_vbox)
-        self._build_domain_warp_section(panel_vbox)
-        self._build_preview_section(panel_vbox)
-        self._build_buttons(panel_vbox)
+        self._build_general_section(panel_vbox, content_w)
+        self._build_fractal_section(panel_vbox, content_w)
+        self._build_cellular_section(panel_vbox, content_w)
+        self._build_domain_warp_section(panel_vbox, content_w)
+        self._build_preview_section(panel_vbox, content_w)
+        self._build_buttons(panel_vbox, content_w)
 
         scroll = ScrollView(
-            x=0, y=0, width=PANEL_WIDTH, height=sh,
+            x=0, y=0, width=self._panel_width, height=sh,
             content_height=0,   # auto-calculate from children
             bg_color=PANEL_BG,
             scroll_speed=30,
@@ -230,77 +258,104 @@ class NoiseEditorScene(BaseScene):
         )
         scroll.add_child(panel_vbox)
         self._ui.add(scroll)
+        self._scroll_view = scroll
+
+    def _rebuild_panel(self) -> None:
+        """Rebuild the panel UI with the current panel width, preserving control values."""
+        # Capture current state before clearing
+        try:
+            cfg = self._read_config()
+        except Exception:
+            cfg = {}
+        pw_text = self._ctrl["preview_w"].text if "preview_w" in self._ctrl else "256"
+        ph_text = self._ctrl["preview_h"].text if "preview_h" in self._ctrl else "256"
+        info_text = self._info_label.text if hasattr(self, "_info_label") else ""
+
+        screen = pygame.display.get_surface()
+        sw, sh = screen.get_size()
+        self._ui.clear()
+        self._build_ui(sw, sh)
+
+        # Restore state
+        if cfg:
+            self._write_config(cfg)
+        if "preview_w" in self._ctrl:
+            self._ctrl["preview_w"].text = pw_text
+        if "preview_h" in self._ctrl:
+            self._ctrl["preview_h"].text = ph_text
+        if hasattr(self, "_info_label"):
+            self._info_label.text = info_text
 
     # ── Section builders ────────────────────────────────────────────────────
 
-    def _build_general_section(self, parent: VBox):
+    def _build_general_section(self, parent: VBox, content_w: int):
         parent.add_child(_section_title("─── General ───"))
 
         inp_seed = _text_input("0")
         self._ctrl["seed"] = inp_seed
-        parent.add_child(_row("Seed", inp_seed))
+        parent.add_child(_row("Seed", inp_seed, content_w=content_w))
 
         dd_noise = _dropdown(NOISE_TYPES, 0)
         self._ctrl["noise_type"] = dd_noise
-        parent.add_child(_row("Noise type", dd_noise))
+        parent.add_child(_row("Noise type", dd_noise, content_w=content_w))
 
         inp_freq = _text_input("0.01")
         self._ctrl["frequency"] = inp_freq
-        parent.add_child(_row("Frequency", inp_freq))
+        parent.add_child(_row("Frequency", inp_freq, content_w=content_w))
 
         inp_ox = _text_input("0")
         self._ctrl["offset_x"] = inp_ox
-        parent.add_child(_row("Offset X", inp_ox))
+        parent.add_child(_row("Offset X", inp_ox, content_w=content_w))
 
         inp_oy = _text_input("0")
         self._ctrl["offset_y"] = inp_oy
-        parent.add_child(_row("Offset Y", inp_oy))
+        parent.add_child(_row("Offset Y", inp_oy, content_w=content_w))
 
-    def _build_fractal_section(self, parent: VBox):
+    def _build_fractal_section(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Fractal ───"))
 
         dd_frac = _dropdown(FRACTAL_TYPES, 1)
         self._ctrl["fractal_type"] = dd_frac
-        parent.add_child(_row("Fractal type", dd_frac))
+        parent.add_child(_row("Fractal type", dd_frac, content_w=content_w))
 
         inp_oct = _text_input("5")
         self._ctrl["octaves"] = inp_oct
-        parent.add_child(_row("Octaves", inp_oct))
+        parent.add_child(_row("Octaves", inp_oct, content_w=content_w))
 
         inp_lac = _text_input("2.0")
         self._ctrl["lacunarity"] = inp_lac
-        parent.add_child(_row("Lacunarity", inp_lac))
+        parent.add_child(_row("Lacunarity", inp_lac, content_w=content_w))
 
         inp_per = _text_input("0.5")
         self._ctrl["persistence"] = inp_per
-        parent.add_child(_row("Persistence", inp_per))
+        parent.add_child(_row("Persistence", inp_per, content_w=content_w))
 
         inp_ws = _text_input("0.0")
         self._ctrl["weighted_strength"] = inp_ws
-        parent.add_child(_row("Weighted str.", inp_ws))
+        parent.add_child(_row("Weighted str.", inp_ws, content_w=content_w))
 
         inp_pp = _text_input("2.0")
         self._ctrl["ping_pong_strength"] = inp_pp
-        parent.add_child(_row("Ping-pong str.", inp_pp))
+        parent.add_child(_row("Ping-pong str.", inp_pp, content_w=content_w))
 
-    def _build_cellular_section(self, parent: VBox):
+    def _build_cellular_section(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Cellular ───"))
 
         dd_dist = _dropdown(CELLULAR_DIST_FUNCS, 1)
         self._ctrl["cellular_distance_function"] = dd_dist
-        parent.add_child(_row("Distance func.", dd_dist))
+        parent.add_child(_row("Distance func.", dd_dist, content_w=content_w))
 
         dd_ret = _dropdown(CELLULAR_RETURN_TYPES, 1)
         self._ctrl["cellular_return_type"] = dd_ret
-        parent.add_child(_row("Return type", dd_ret))
+        parent.add_child(_row("Return type", dd_ret, content_w=content_w))
 
         inp_jit = _text_input("1.0")
         self._ctrl["cellular_jitter"] = inp_jit
-        parent.add_child(_row("Jitter", inp_jit))
+        parent.add_child(_row("Jitter", inp_jit, content_w=content_w))
 
-    def _build_domain_warp_section(self, parent: VBox):
+    def _build_domain_warp_section(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Domain Warp ───"))
 
@@ -313,45 +368,45 @@ class NoiseEditorScene(BaseScene):
 
         dd_dwt = _dropdown(DOMAIN_WARP_TYPES, 0)
         self._ctrl["domain_warp_type"] = dd_dwt
-        parent.add_child(_row("Warp type", dd_dwt))
+        parent.add_child(_row("Warp type", dd_dwt, content_w=content_w))
 
         inp_amp = _text_input("30.0")
         self._ctrl["domain_warp_amplitude"] = inp_amp
-        parent.add_child(_row("Amplitude", inp_amp))
+        parent.add_child(_row("Amplitude", inp_amp, content_w=content_w))
 
         inp_dwf = _text_input("0.05")
         self._ctrl["domain_warp_frequency"] = inp_dwf
-        parent.add_child(_row("Frequency", inp_dwf))
+        parent.add_child(_row("Frequency", inp_dwf, content_w=content_w))
 
         dd_dwft = _dropdown(DOMAIN_WARP_FRACTAL_TYPES, 0)
         self._ctrl["domain_warp_fractal_type"] = dd_dwft
-        parent.add_child(_row("Fractal type", dd_dwft))
+        parent.add_child(_row("Fractal type", dd_dwft, content_w=content_w))
 
         inp_dwo = _text_input("5")
         self._ctrl["domain_warp_fractal_octaves"] = inp_dwo
-        parent.add_child(_row("Octaves", inp_dwo))
+        parent.add_child(_row("Octaves", inp_dwo, content_w=content_w))
 
         inp_dwl = _text_input("2.0")
         self._ctrl["domain_warp_fractal_lacunarity"] = inp_dwl
-        parent.add_child(_row("Lacunarity", inp_dwl))
+        parent.add_child(_row("Lacunarity", inp_dwl, content_w=content_w))
 
         inp_dwg = _text_input("0.5")
         self._ctrl["domain_warp_fractal_gain"] = inp_dwg
-        parent.add_child(_row("Gain", inp_dwg))
+        parent.add_child(_row("Gain", inp_dwg, content_w=content_w))
 
-    def _build_preview_section(self, parent: VBox):
+    def _build_preview_section(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
         parent.add_child(_section_title("─── Preview size ───"))
 
         inp_w = _text_input("256")
         self._ctrl["preview_w"] = inp_w
-        parent.add_child(_row("Width", inp_w))
+        parent.add_child(_row("Width", inp_w, content_w=content_w))
 
         inp_h = _text_input("256")
         self._ctrl["preview_h"] = inp_h
-        parent.add_child(_row("Height", inp_h))
+        parent.add_child(_row("Height", inp_h, content_w=content_w))
 
-    def _build_buttons(self, parent: VBox):
+    def _build_buttons(self, parent: VBox, content_w: int):
         parent.add_child(_section_spacer())
 
         # Preset dropdown (if config.json has presets)
@@ -360,13 +415,13 @@ class NoiseEditorScene(BaseScene):
             parent.add_child(_section_title("─── Preset ───"))
             dd_presets = _dropdown(noise_names, 0)
             self._ctrl["preset_dropdown"] = dd_presets
-            parent.add_child(_row("Preset", dd_presets))
+            parent.add_child(_row("Preset", dd_presets, content_w=content_w))
 
         parent.add_child(_section_spacer())
 
         # Action buttons — centered in the panel
         btn_row = HBox(
-            width=PANEL_CONTENT_W, height=36,
+            width=content_w, height=36,
             spacing=12, align='center', justify='center', auto_size=False,
         )
 
@@ -449,11 +504,6 @@ class NoiseEditorScene(BaseScene):
         def _set_text(key: str, value):
             if key in c:
                 c[key].text = str(value)
-
-        def _set_dropdown_by_index(key: str, value):
-            if key in c:
-                idx = int(value) if isinstance(value, (int, float)) else 0
-                c[key].selected_index = idx
 
         def _set_dropdown_by_name(key: str, value, options: List[str]):
             """Set dropdown by enum name or int value."""
@@ -609,7 +659,7 @@ class NoiseEditorScene(BaseScene):
         world_w = pw * TILE_SIZE
         world_h = ph * TILE_SIZE
         # Offset the camera origin so the map starts after the panel
-        cam_x = max(0.0, (world_w - (sw - PANEL_WIDTH)) / 2)
+        cam_x = max(0.0, (world_w - (sw - self._panel_width)) / 2)
         cam_y = max(0.0, (world_h - sh) / 2)
 
         self._camera = Camera(
@@ -628,6 +678,36 @@ class NoiseEditorScene(BaseScene):
             self.running = False
             return
 
+        # ── Divider drag ──────────────────────────────────────────────────
+        screen = pygame.display.get_surface()
+        sw = screen.get_width()
+        divider_x = self._panel_width
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mx = event.pos[0]
+            if abs(mx - divider_x) <= _DIVIDER_HIT_W // 2:
+                self._dragging_divider = True
+                self._divider_start_x = mx
+                self._divider_start_panel_w = self._panel_width
+                return  # consume — don't pass to UI
+
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self._dragging_divider:
+                self._dragging_divider = False
+                self._rebuild_panel()
+                return
+
+        elif event.type == pygame.MOUSEMOTION:
+            if self._dragging_divider:
+                dx = event.pos[0] - self._divider_start_x
+                new_w = self._divider_start_panel_w + dx
+                new_w = max(_PANEL_MIN_W, min(sw - 200, new_w))
+                self._panel_width = new_w
+                # Live feedback: just resize the scroll view boundary
+                if self._scroll_view:
+                    self._scroll_view.width = new_w
+                return
+
         if self._ui:
             self._ui.handle_event(event)
 
@@ -636,6 +716,15 @@ class NoiseEditorScene(BaseScene):
     def update(self, dt: float) -> None:
         if self._ui:
             self._ui.update(dt)
+
+        # Cursor: show horizontal-resize when hovering the divider
+        mx = pygame.mouse.get_pos()[0]
+        if self._dragging_divider or abs(mx - self._panel_width) <= _DIVIDER_HIT_W // 2:
+            pygame.mouse.set_cursor(
+                getattr(pygame, "SYSTEM_CURSOR_SIZEWE", pygame.SYSTEM_CURSOR_ARROW)
+            )
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
         if not self._camera:
             return
@@ -676,16 +765,15 @@ class NoiseEditorScene(BaseScene):
     def draw(self, screen: pygame.Surface) -> None:
         screen.fill((20, 20, 30))
 
+        sw, sh = screen.get_size()
+
         # Tilemap (offset to the right of the panel)
         if self._tilemap and self._camera and self._tileset:
             # Clip drawing area to the right of the panel
-            sw, sh = screen.get_size()
-            clip_rect = pygame.Rect(PANEL_WIDTH, 0, sw - PANEL_WIDTH, sh)
+            clip_rect = pygame.Rect(self._panel_width, 0, sw - self._panel_width, sh)
             old_clip = screen.get_clip()
             screen.set_clip(clip_rect)
 
-            # We need to offset the camera drawing so x=0 in the tilemap
-            # appears at PANEL_WIDTH on screen.  We create a subsurface.
             sub = screen.subsurface(clip_rect)
             self._tilemap.draw(sub, self._camera, self._tileset)
 
@@ -698,6 +786,13 @@ class NoiseEditorScene(BaseScene):
         if self._ui:
             self._ui.draw(screen)
 
+        # Divider bar
+        divider_color = (150, 150, 200) if self._dragging_divider else (70, 70, 90)
+        pygame.draw.rect(
+            screen, divider_color,
+            pygame.Rect(self._panel_width - _DIVIDER_W // 2, 0, _DIVIDER_W, sh)
+        )
+
     def _draw_hud(self, screen: pygame.Surface) -> None:
         small = pygame.font.Font(None, 18)
         cam = self._camera
@@ -707,10 +802,9 @@ class NoiseEditorScene(BaseScene):
             f"Zoom: {cam.zoom:.2f}x"
         )
         surf = small.render(info, True, (200, 200, 200))
-        screen.blit(surf, (PANEL_WIDTH + 8, 8))
+        screen.blit(surf, (self._panel_width + 8, 8))
 
         hint = "WASD/Arrows: Move | Q/E: Zoom | ESC: Quit"
         hint_surf = small.render(hint, True, (130, 130, 130))
-        rect = hint_surf.get_rect(bottomleft=(PANEL_WIDTH + 8, screen.get_height() - 8))
+        rect = hint_surf.get_rect(bottomleft=(self._panel_width + 8, screen.get_height() - 8))
         screen.blit(hint_surf, rect)
-

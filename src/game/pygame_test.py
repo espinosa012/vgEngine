@@ -40,7 +40,7 @@ class BaseGameApp:
         pygame.init()
 
         # Crear ventana
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Matrix Viewer - vgEngine")
 
         # Reloj para controlar FPS
@@ -69,11 +69,17 @@ class BaseGameApp:
                 self.scene.running = False
                 print("✓ Ventana cerrada por el usuario")
 
+            # Window resize (pygame 2: WINDOWRESIZED)
+            elif event.type == getattr(pygame, "WINDOWRESIZED", -1):
+                sw, sh = pygame.display.get_surface().get_size()
+                if hasattr(self.scene, "on_resize"):
+                    self.scene.on_resize(sw, sh)
+
             # Pasar eventos a la escena
             self.scene.handle_event(event)
 
             # Si la escena indica que quiere cerrar, cerramos
-            if not  self.scene.running:
+            if not self.scene.running:
                 self.running = False
 
     def update(self):
@@ -94,7 +100,7 @@ class BaseGameApp:
         # Dibujar FPS
         font = pygame.font.Font(None, 20)
         fps_text = font.render(f"FPS: {int(self.clock.get_fps())}", True, (100, 255, 100))
-        self.screen.blit(fps_text, (WINDOW_WIDTH - 80, 10))
+        self.screen.blit(fps_text, (self.screen.get_width() - 80, 10))
 
         # Actualizar pantalla
         pygame.display.flip()
