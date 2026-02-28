@@ -9,6 +9,31 @@ import pygame
 from ..widget import Widget
 
 
+def _clipboard_get() -> str:
+    """Return plain text from the system clipboard, or '' on failure."""
+    try:
+        if not pygame.scrap.get_init():
+            pygame.scrap.init()
+        data = pygame.scrap.get(pygame.SCRAP_TEXT)
+        if data is None:
+            return ""
+        text = data.decode("utf-8", errors="replace")
+        # Normalize line endings and take only the first line (single-line input)
+        return text.replace("\r\n", "\n").replace("\r", "\n").split("\n")[0]
+    except Exception:
+        return ""
+
+
+def _clipboard_set(text: str) -> None:
+    """Copy *text* to the system clipboard, silently ignoring errors."""
+    try:
+        if not pygame.scrap.get_init():
+            pygame.scrap.init()
+        pygame.scrap.put(pygame.SCRAP_TEXT, text.encode("utf-8"))
+    except Exception:
+        pass
+
+
 class TextInput(Widget):
     """
     A single-line text input widget.
@@ -296,6 +321,28 @@ class TextInput(Widget):
             self._sel_anchor = 0
             self._cursor_pos = len(self._text)
             self._update_scroll()
+            return True
+
+        # ── Copy ──────────────────────────────────────────────────────────────
+        if event.key == pygame.K_c and ctrl:
+            if self._has_selection():
+                start, end = self._selection_range()
+                _clipboard_set(self._text[start:end])
+            return True
+
+        # ── Cut ───────────────────────────────────────────────────────────────
+        if event.key == pygame.K_x and ctrl:
+            if self._has_selection():
+                start, end = self._selection_range()
+                _clipboard_set(self._text[start:end])
+                self._delete_selection()
+            return True
+
+        # ── Paste ─────────────────────────────────────────────────────────────
+        if event.key == pygame.K_v and ctrl:
+            text = _clipboard_get()
+            if text:
+                self._insert_text(text)
             return True
 
         # ── Cursor movement ───────────────────────────────────────────────────
