@@ -11,8 +11,6 @@ from typing import Optional, Tuple, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import FractalType
 from .kernels import (
     value_cubic_single_2d,
     value_cubic_fbm_2d,
@@ -20,6 +18,7 @@ from .kernels import (
     value_cubic_ridged_2d,
     value_cubic_pingpong_2d,
 )
+from ..core import NoiseGenerator, FractalType
 
 
 class ValueCubicNoise2D(NoiseGenerator):

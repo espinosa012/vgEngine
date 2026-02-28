@@ -5,6 +5,7 @@ Contains example scenes for testing different features.
 """
 
 from .base_scene import BaseScene
+from .noise_editor_scene import NoiseEditorScene
 from .tilemap_camera_scene import TilemapCameraScene
 from .random_terrain_scene import RandomTerrainScene
 from .character_test_scene import CharacterTestScene
@@ -54,6 +55,7 @@ __all__ = [
     "RandomTerrainScene",
     "CharacterTestScene",
     "MatrixViewerScene",
+    "NoiseEditorScene",
     "AVAILABLE_SCENES",
     "get_scene_by_index",
     "get_scene_list",

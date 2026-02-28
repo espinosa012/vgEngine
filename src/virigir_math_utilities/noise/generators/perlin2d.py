@@ -10,8 +10,6 @@ from typing import Optional, Tuple, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import FractalType
 from .kernels import (
     perlin_fbm_2d,
     perlin_fbm_2d_weighted,
@@ -19,6 +17,7 @@ from .kernels import (
     perlin_pingpong_2d,
     perlin_single_2d,
 )
+from ..core import NoiseGenerator, FractalType
 
 
 class PerlinNoise2D(NoiseGenerator):

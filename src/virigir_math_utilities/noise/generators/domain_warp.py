@@ -11,8 +11,7 @@ import numpy as np
 from numba import njit, prange
 from numpy.typing import NDArray
 
-from vgmath.noise.core.enums import DomainWarpType, DomainWarpFractalType
-
+from virigir_math_utilities.noise.core import DomainWarpFractalType, DomainWarpType
 
 # ============================================================================
 # Constants

@@ -11,6 +11,7 @@ from .image import ImageWidget
 from .checkbox import Checkbox
 from .slider import Slider
 from .text_input import TextInput
+from .dropdown import Dropdown
 
 __all__ = [
     'Label',
@@ -20,5 +21,6 @@ __all__ = [
     'Checkbox',
     'Slider',
     'TextInput',
+    'Dropdown',
 ]
 

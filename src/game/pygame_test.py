@@ -12,6 +12,8 @@ Este script demuestra:
 import sys
 from pathlib import Path
 
+from game.test_scenes import NoiseEditorScene
+
 # Agregar el directorio src al path para imports
 src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
@@ -24,8 +26,8 @@ from test_scenes.matrix_viewer_scene import MatrixViewerScene
 
 
 # Constantes
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
+WINDOW_WIDTH = 1100
+WINDOW_HEIGHT = 700
 FPS = 60
 
 
@@ -49,7 +51,7 @@ class BaseGameApp:
         self.frame_count = 0
 
         # Crear y configurar la escena
-        self.scene = MatrixViewerScene()
+        self.scene = NoiseEditorScene()
         self.scene.on_enter()
 
         print("✓ Pygame inicializado correctamente")
@@ -68,7 +70,7 @@ class BaseGameApp:
             self.scene.handle_event(event)
 
             # Si la escena indica que quiere cerrar, cerramos
-            if not self.scene.running:
+            if not  self.scene.running:
                 self.running = False
 
     def update(self):

@@ -10,8 +10,6 @@ from typing import Optional, Tuple, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import FractalType
 from .kernels import (
     opensimplex_fbm_2d,
     opensimplex_fbm_2d_weighted,
@@ -19,7 +17,7 @@ from .kernels import (
     opensimplex_pingpong_2d,
     opensimplex_single_2d,
 )
-
+from ..core import NoiseGenerator, FractalType
 
 # Gradient vectors for OpenSimplex 2D
 GRADIENTS_2D = np.array([

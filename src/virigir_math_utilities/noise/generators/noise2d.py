@@ -8,7 +8,7 @@ from typing import Optional, Tuple, Sequence, Dict, Any, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from . import DomainWarp2D
+from .domain_warp import DomainWarp2D
 from ..core import NoiseGenerator, FractalType, NoiseType, CellularDistanceFunction, CellularReturnType, DomainWarpType, \
     DomainWarpFractalType
 

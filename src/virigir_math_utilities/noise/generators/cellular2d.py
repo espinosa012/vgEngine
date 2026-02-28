@@ -10,8 +10,6 @@ from typing import Optional, Tuple, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import FractalType, CellularDistanceFunction, CellularReturnType
 from .kernels import (
     cellular_single_2d,
     cellular_fbm_2d,
@@ -19,6 +17,7 @@ from .kernels import (
     cellular_ridged_2d,
     cellular_pingpong_2d,
 )
+from ..core import NoiseGenerator, CellularDistanceFunction, CellularReturnType, FractalType
 
 
 class CellularNoise2D(NoiseGenerator):

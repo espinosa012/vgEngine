@@ -556,6 +556,70 @@ class Matrix2D:
 
         return result
 
+    @classmethod
+    def create_from_noise(
+        cls,
+        noise,
+        size_x: int,
+        size_y: int
+    ) -> "Matrix2D":
+        """
+        Create a new Matrix2D filled with values from a noise generator.
+
+        Generates noise over the integer grid [0, size_x-1] x [0, size_y-1]
+        using vectorized operations for maximum performance.
+
+        Args:
+            noise: A noise generator instance (NoiseGenerator2D or any object
+                   with a ``generate_region`` or ``get_value_at`` method).
+            size_x: Number of columns (width) of the resulting matrix.
+            size_y: Number of rows (height) of the resulting matrix.
+
+        Returns:
+            A new Matrix2D of shape (size_x, size_y) with all values assigned.
+
+        Raises:
+            ValueError: If size_x or size_y are not positive.
+
+        Example::
+
+            from virigir_math_utilities.noise.generators.noise2d import NoiseGenerator2D
+
+            noise = NoiseGenerator2D.from_dict(noise_config)
+            matrix = Matrix2D.create_from_noise(noise, 512, 512)
+        """
+        if size_x <= 0 or size_y <= 0:
+            raise ValueError(
+                f"Dimensions must be positive integers, got ({size_x}, {size_y})"
+            )
+
+        shape = (size_x, size_y)
+
+        if hasattr(noise, 'generate_region'):
+            region = [
+                (0.0, float(size_x - 1), size_x),
+                (0.0, float(size_y - 1), size_y),
+            ]
+            noise_data = noise.generate_region(region)
+        elif hasattr(noise, 'get_values_vectorized'):
+            rows = np.arange(size_x, dtype=np.float64)
+            cols = np.arange(size_y, dtype=np.float64)
+            xx, yy = np.meshgrid(rows, cols, indexing='ij')
+            noise_data = noise.get_values_vectorized(
+                xx.ravel(), yy.ravel()
+            ).reshape(shape)
+        else:
+            noise_data = np.empty(shape, dtype=np.float64)
+            for r in range(size_x):
+                for c in range(size_y):
+                    noise_data[r, c] = noise.get_value_at((float(r), float(c)))
+
+        result = cls.__new__(cls)
+        result._shape = shape
+        result._data = noise_data.astype(np.float64)
+        result._mask = np.ones(shape, dtype=np.bool_)
+        return result
+
     def from_noise(
         self,
         noise: "NoiseGenerator",

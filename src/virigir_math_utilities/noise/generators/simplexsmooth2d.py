@@ -11,8 +11,6 @@ from typing import Optional, Tuple, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from vgmath.noise.core.base import NoiseGenerator
-from vgmath.noise.core.enums import FractalType
 from .kernels import (
     simplex_smooth_single_2d,
     simplex_smooth_fbm_2d,
@@ -20,6 +18,7 @@ from .kernels import (
     simplex_smooth_ridged_2d,
     simplex_smooth_pingpong_2d,
 )
+from ..core import NoiseGenerator, FractalType
 
 
 class SimplexSmoothNoise2D(NoiseGenerator):

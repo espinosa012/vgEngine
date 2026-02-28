@@ -1,0 +1,674 @@
+"""
+Noise Editor Scene - Interactive noise parameter editor with live preview.
+
+Displays a grayscale tilemap generated from a noise and provides UI controls
+to tweak **every** noise parameter.  Pressing *Actualizar* regenerates the
+preview with the current settings.
+
+Sections:
+  • General      – seed, noise_type, frequency, offset_x, offset_y
+  • Fractal      – fractal_type, octaves, lacunarity, persistence,
+                   weighted_strength, ping_pong_strength
+  • Cellular     – cellular_distance_function, cellular_return_type,
+                   cellular_jitter
+  • Domain Warp  – enabled (checkbox), type, amplitude, frequency,
+                   fractal_type, fractal_octaves, fractal_lacunarity,
+                   fractal_gain
+  • Preview size – width, height
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Optional, Dict, Any, List, Tuple
+
+import numpy as np
+import pygame
+
+from src.core.tilemap.tilemap import TileMap
+from src.core.tilemap.tileset import TileSet
+from src.core.camera.camera import Camera
+from src.ui import (
+    UIManager, Label, Button, TextInput, Checkbox, Slider,
+    VBox, HBox, ScrollView, Dropdown,
+)
+from .base_scene import BaseScene
+
+# ---------------------------------------------------------------------------
+# Lazy imports
+# ---------------------------------------------------------------------------
+_Matrix2D = None
+_NoiseGenerator2D = None
+
+
+def _get_matrix2d_class():
+    global _Matrix2D
+    if _Matrix2D is None:
+        from src.virigir_math_utilities.matrix.matrix2d import Matrix2D
+        _Matrix2D = Matrix2D
+    return _Matrix2D
+
+
+def _get_noise_generator_class():
+    global _NoiseGenerator2D
+    if _NoiseGenerator2D is None:
+        from src.virigir_math_utilities.noise.generators.noise2d import NoiseGenerator2D
+        _NoiseGenerator2D = NoiseGenerator2D
+    return _NoiseGenerator2D
+
+
+# ---------------------------------------------------------------------------
+# Enum definitions (kept as plain lists so we don't need to import enums
+# at module level — avoids the circular-import issue).
+# ---------------------------------------------------------------------------
+NOISE_TYPES = ["PERLIN", "SIMPLEX", "SIMPLEX_SMOOTH", "CELLULAR", "VALUE_CUBIC", "VALUE"]
+FRACTAL_TYPES = ["NONE", "FBM", "RIDGED", "PING_PONG"]
+CELLULAR_DIST_FUNCS = ["EUCLIDEAN", "EUCLIDEAN_SQUARED", "MANHATTAN", "HYBRID"]
+CELLULAR_RETURN_TYPES = [
+    "CELL_VALUE", "DISTANCE", "DISTANCE_2",
+    "DISTANCE_2_ADD", "DISTANCE_2_SUB", "DISTANCE_2_MUL", "DISTANCE_2_DIV",
+]
+DOMAIN_WARP_TYPES = ["SIMPLEX", "SIMPLEX_REDUCED", "BASIC_GRID"]
+DOMAIN_WARP_FRACTAL_TYPES = ["NONE", "PROGRESSIVE", "INDEPENDENT"]
+
+# ---------------------------------------------------------------------------
+# Visual constants
+# ---------------------------------------------------------------------------
+GRAYSCALE_STEPS = 32
+TILE_SIZE = 4
+CAMERA_SPEED = 500
+ZOOM_SPEED = 1.5
+
+PANEL_WIDTH = 310
+PANEL_BG = (30, 30, 45, 240)
+SECTION_BG = (40, 40, 58, 200)
+LABEL_COLOR = (190, 190, 210)
+TITLE_COLOR = (220, 220, 255)
+INPUT_BG = (50, 50, 65)
+INPUT_BORDER = (100, 100, 130)
+FOCUS_BORDER = (100, 160, 255)
+
+CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "config.json"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Helper: build a labelled row  (Label + widget)  inside a VBox
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _lbl(text: str, font_size: int = 16) -> Label:
+    return Label(text=text, font_size=font_size, color=LABEL_COLOR, auto_size=True)
+
+
+def _section_title(text: str) -> Label:
+    return Label(text=text, font_size=20, color=TITLE_COLOR, auto_size=True)
+
+
+def _text_input(default: str = "0", w: int = 80) -> TextInput:
+    return TextInput(
+        width=w, height=24, text=default, font_size=16, max_length=12,
+        bg_color=INPUT_BG, text_color=(255, 255, 255),
+        border_color=INPUT_BORDER, focus_border_color=FOCUS_BORDER,
+    )
+
+
+def _dropdown(options: List[str], index: int = 0, w: int = 180) -> Dropdown:
+    return Dropdown(
+        width=w, height=24, options=options, selected_index=index,
+        font_size=16, bg_color=INPUT_BG, text_color=(255, 255, 255),
+        border_color=INPUT_BORDER, selected_color=(50, 130, 80),
+        hover_color=(70, 70, 90), max_visible=6,
+    )
+
+
+def _row(label_text: str, widget, label_w: int = 110) -> HBox:
+    """Label on the left, widget on the right."""
+    row = HBox(spacing=6, align='center', auto_size=True)
+    lbl = _lbl(label_text)
+    lbl.width = label_w
+    row.add_child(lbl)
+    row.add_child(widget)
+    return row
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Scene
+# ═══════════════════════════════════════════════════════════════════════════
+
+class NoiseEditorScene(BaseScene):
+    """Interactive noise editor with live tilemap preview."""
+
+    def __init__(self):
+        super().__init__(
+            name="Noise Editor",
+            description="Edit noise parameters and preview the result as a grayscale tilemap",
+        )
+        self.running = True
+
+        # UI
+        self._ui: Optional[UIManager] = None
+
+        # Viewer
+        self._tilemap: Optional[TileMap] = None
+        self._tileset: Optional[TileSet] = None
+        self._camera: Optional[Camera] = None
+        self._map_w = 0
+        self._map_h = 0
+
+        # Controls – will be populated in _build_ui
+        self._ctrl: Dict[str, Any] = {}
+
+    # -- lifecycle -----------------------------------------------------------
+
+    def on_enter(self):
+        screen = pygame.display.get_surface()
+        sw, sh = screen.get_size()
+        self._build_ui(sw, sh)
+        # Generate an initial preview
+        self._on_update()
+
+    def on_exit(self):
+        self._tilemap = None
+        self._tileset = None
+        self._camera = None
+
+    # -- UI construction -----------------------------------------------------
+
+    def _build_ui(self, sw: int, sh: int):
+        self._ui = UIManager(sw, sh)
+
+        # ── Left panel (scrollable controls) ────────────────────────────────
+        panel_vbox = VBox(
+            x=0, y=0, width=PANEL_WIDTH - 20,
+            spacing=6, align=VBox.ALIGN_LEFT,
+            auto_size=True, padding=0,
+        )
+
+        self._build_general_section(panel_vbox)
+        self._build_fractal_section(panel_vbox)
+        self._build_cellular_section(panel_vbox)
+        self._build_domain_warp_section(panel_vbox)
+        self._build_preview_section(panel_vbox)
+        self._build_buttons(panel_vbox)
+
+        scroll = ScrollView(
+            x=0, y=0, width=PANEL_WIDTH, height=sh,
+            content_height=2000,
+            bg_color=PANEL_BG,
+            scroll_speed=28,
+            show_scrollbar=True,
+            padding=10,
+        )
+        scroll.add_child(panel_vbox)
+        self._ui.add(scroll)
+
+    # ── Section builders ────────────────────────────────────────────────────
+
+    def _build_general_section(self, parent: VBox):
+        parent.add_child(_section_title("─── General ───"))
+
+        inp_seed = _text_input("0", 100)
+        self._ctrl["seed"] = inp_seed
+        parent.add_child(_row("Seed", inp_seed))
+
+        dd_noise = _dropdown(NOISE_TYPES, 0)
+        self._ctrl["noise_type"] = dd_noise
+        parent.add_child(_row("Noise type", dd_noise))
+
+        inp_freq = _text_input("0.01", 100)
+        self._ctrl["frequency"] = inp_freq
+        parent.add_child(_row("Frequency", inp_freq))
+
+        inp_ox = _text_input("0", 80)
+        self._ctrl["offset_x"] = inp_ox
+        parent.add_child(_row("Offset X", inp_ox))
+
+        inp_oy = _text_input("0", 80)
+        self._ctrl["offset_y"] = inp_oy
+        parent.add_child(_row("Offset Y", inp_oy))
+
+    def _build_fractal_section(self, parent: VBox):
+        parent.add_child(_section_title("─── Fractal ───"))
+
+        dd_frac = _dropdown(FRACTAL_TYPES, 1)
+        self._ctrl["fractal_type"] = dd_frac
+        parent.add_child(_row("Fractal type", dd_frac))
+
+        inp_oct = _text_input("5", 60)
+        self._ctrl["octaves"] = inp_oct
+        parent.add_child(_row("Octaves", inp_oct))
+
+        inp_lac = _text_input("2.0", 80)
+        self._ctrl["lacunarity"] = inp_lac
+        parent.add_child(_row("Lacunarity", inp_lac))
+
+        inp_per = _text_input("0.5", 80)
+        self._ctrl["persistence"] = inp_per
+        parent.add_child(_row("Persistence", inp_per))
+
+        inp_ws = _text_input("0.0", 80)
+        self._ctrl["weighted_strength"] = inp_ws
+        parent.add_child(_row("Weighted str.", inp_ws))
+
+        inp_pp = _text_input("2.0", 80)
+        self._ctrl["ping_pong_strength"] = inp_pp
+        parent.add_child(_row("Ping-pong str.", inp_pp))
+
+    def _build_cellular_section(self, parent: VBox):
+        parent.add_child(_section_title("─── Cellular ───"))
+
+        dd_dist = _dropdown(CELLULAR_DIST_FUNCS, 1)
+        self._ctrl["cellular_distance_function"] = dd_dist
+        parent.add_child(_row("Distance func.", dd_dist))
+
+        dd_ret = _dropdown(CELLULAR_RETURN_TYPES, 1)
+        self._ctrl["cellular_return_type"] = dd_ret
+        parent.add_child(_row("Return type", dd_ret))
+
+        inp_jit = _text_input("1.0", 80)
+        self._ctrl["cellular_jitter"] = inp_jit
+        parent.add_child(_row("Jitter", inp_jit))
+
+    def _build_domain_warp_section(self, parent: VBox):
+        parent.add_child(_section_title("─── Domain Warp ───"))
+
+        cb_dw = Checkbox(
+            text="Enabled", checked=False, box_size=18,
+            text_color=LABEL_COLOR, font_size=16,
+        )
+        self._ctrl["domain_warp_enabled"] = cb_dw
+        parent.add_child(cb_dw)
+
+        dd_dwt = _dropdown(DOMAIN_WARP_TYPES, 0)
+        self._ctrl["domain_warp_type"] = dd_dwt
+        parent.add_child(_row("Warp type", dd_dwt))
+
+        inp_amp = _text_input("30.0", 80)
+        self._ctrl["domain_warp_amplitude"] = inp_amp
+        parent.add_child(_row("Amplitude", inp_amp))
+
+        inp_dwf = _text_input("0.05", 80)
+        self._ctrl["domain_warp_frequency"] = inp_dwf
+        parent.add_child(_row("Frequency", inp_dwf))
+
+        dd_dwft = _dropdown(DOMAIN_WARP_FRACTAL_TYPES, 0)
+        self._ctrl["domain_warp_fractal_type"] = dd_dwft
+        parent.add_child(_row("Fractal type", dd_dwft))
+
+        inp_dwo = _text_input("5", 60)
+        self._ctrl["domain_warp_fractal_octaves"] = inp_dwo
+        parent.add_child(_row("Octaves", inp_dwo))
+
+        inp_dwl = _text_input("2.0", 80)
+        self._ctrl["domain_warp_fractal_lacunarity"] = inp_dwl
+        parent.add_child(_row("Lacunarity", inp_dwl))
+
+        inp_dwg = _text_input("0.5", 80)
+        self._ctrl["domain_warp_fractal_gain"] = inp_dwg
+        parent.add_child(_row("Gain", inp_dwg))
+
+    def _build_preview_section(self, parent: VBox):
+        parent.add_child(_section_title("─── Preview size ───"))
+
+        inp_w = _text_input("256", 80)
+        self._ctrl["preview_w"] = inp_w
+        parent.add_child(_row("Width", inp_w))
+
+        inp_h = _text_input("256", 80)
+        self._ctrl["preview_h"] = inp_h
+        parent.add_child(_row("Height", inp_h))
+
+    def _build_buttons(self, parent: VBox):
+        parent.add_child(Label(text="", font_size=6, auto_size=True))  # spacer
+
+        btn_row = HBox(spacing=10, align='center', auto_size=True)
+
+        btn_update = Button(
+            width=120, height=32, text="Actualizar", font_size=18,
+            bg_color=(50, 130, 80), hover_color=(70, 160, 100),
+            pressed_color=(40, 100, 65), border_radius=6,
+        )
+        btn_update.on_click(lambda _b: self._on_update())
+        btn_row.add_child(btn_update)
+
+        btn_load = Button(
+            width=120, height=32, text="Cargar JSON", font_size=18,
+            bg_color=(60, 90, 160), hover_color=(80, 115, 190),
+            pressed_color=(45, 70, 130), border_radius=6,
+        )
+        btn_load.on_click(lambda _b: self._on_load_json())
+        btn_row.add_child(btn_load)
+
+        parent.add_child(btn_row)
+
+        # Dropdown to pick noise from config.json
+        noise_names = self._load_noise_names()
+        if noise_names:
+            dd_presets = _dropdown(noise_names, 0, 180)
+            self._ctrl["preset_dropdown"] = dd_presets
+            parent.add_child(_row("Preset", dd_presets))
+
+        # Error / info label
+        self._info_label = Label(text="", font_size=16, color=(255, 200, 80), auto_size=True)
+        parent.add_child(self._info_label)
+
+    # -- Read controls -------------------------------------------------------
+
+    def _read_config(self) -> Dict[str, Any]:
+        """Build a noise config dict from the current UI control values."""
+        c = self._ctrl
+
+        def _int(key: str, default: int = 0) -> int:
+            try:
+                return int(c[key].text)
+            except (ValueError, AttributeError):
+                return default
+
+        def _float(key: str, default: float = 0.0) -> float:
+            try:
+                return float(c[key].text)
+            except (ValueError, AttributeError):
+                return default
+
+        cfg: Dict[str, Any] = {
+            # General
+            "seed": _int("seed", 0),
+            "noise_type": c["noise_type"].selected_index,
+            "frequency": _float("frequency", 0.01),
+            "offset_x": _int("offset_x", 0),
+            "offset_y": _int("offset_y", 0),
+            # Fractal
+            "fractal_type": c["fractal_type"].selected_index,
+            "octaves": _int("octaves", 5),
+            "lacunarity": _float("lacunarity", 2.0),
+            "persistence": _float("persistence", 0.5),
+            "weighted_strength": _float("weighted_strength", 0.0),
+            "ping_pong_strength": _float("ping_pong_strength", 2.0),
+            # Cellular
+            "cellular_distance_function": c["cellular_distance_function"].selected_index,
+            "cellular_return_type": c["cellular_return_type"].selected_index,
+            "cellular_jitter": _float("cellular_jitter", 1.0),
+            # Domain warp
+            "domain_warp_enabled": 1 if c["domain_warp_enabled"].checked else 0,
+            "domain_warp_type": c["domain_warp_type"].selected_index,
+            "domain_warp_amplitude": _float("domain_warp_amplitude", 30.0),
+            "domain_warp_frequency": _float("domain_warp_frequency", 0.05),
+            "domain_warp_fractal_type": c["domain_warp_fractal_type"].selected_index,
+            "domain_warp_fractal_octaves": _int("domain_warp_fractal_octaves", 5),
+            "domain_warp_fractal_lacunarity": _float("domain_warp_fractal_lacunarity", 2.0),
+            "domain_warp_fractal_gain": _float("domain_warp_fractal_gain", 0.5),
+        }
+        return cfg
+
+    def _write_config(self, cfg: Dict[str, Any]):
+        """Populate UI controls from a config dict."""
+        c = self._ctrl
+
+        def _set_text(key: str, value):
+            if key in c:
+                c[key].text = str(value)
+
+        def _set_dropdown_by_index(key: str, value):
+            if key in c:
+                idx = int(value) if isinstance(value, (int, float)) else 0
+                c[key].selected_index = idx
+
+        def _set_dropdown_by_name(key: str, value, options: List[str]):
+            """Set dropdown by enum name or int value."""
+            if key not in c:
+                return
+            if isinstance(value, int):
+                c[key].selected_index = value
+            elif isinstance(value, str):
+                upper = value.upper()
+                for i, opt in enumerate(options):
+                    if opt == upper:
+                        c[key].selected_index = i
+                        return
+                c[key].selected_index = 0
+
+        # General
+        _set_text("seed", cfg.get("seed", 0))
+        _set_dropdown_by_name("noise_type", cfg.get("noise_type", 0), NOISE_TYPES)
+        _set_text("frequency", cfg.get("frequency", 0.01))
+        _set_text("offset_x", cfg.get("offset_x", 0))
+        _set_text("offset_y", cfg.get("offset_y", 0))
+
+        # Fractal
+        _set_dropdown_by_name("fractal_type", cfg.get("fractal_type", 1), FRACTAL_TYPES)
+        _set_text("octaves", cfg.get("octaves", 5))
+        _set_text("lacunarity", cfg.get("lacunarity", 2.0))
+        _set_text("persistence", cfg.get("persistence", 0.5))
+        _set_text("weighted_strength", cfg.get("weighted_strength", 0.0))
+        _set_text("ping_pong_strength", cfg.get("ping_pong_strength", 2.0))
+
+        # Cellular
+        _set_dropdown_by_name(
+            "cellular_distance_function",
+            cfg.get("cellular_distance_function", 0),
+            CELLULAR_DIST_FUNCS,
+        )
+        _set_dropdown_by_name(
+            "cellular_return_type",
+            cfg.get("cellular_return_type", 1),
+            CELLULAR_RETURN_TYPES,
+        )
+        _set_text("cellular_jitter", cfg.get("cellular_jitter", 1.0))
+
+        # Domain warp
+        if "domain_warp_enabled" in c:
+            c["domain_warp_enabled"].checked = bool(cfg.get("domain_warp_enabled", 0))
+        _set_dropdown_by_name(
+            "domain_warp_type",
+            cfg.get("domain_warp_type", 0),
+            DOMAIN_WARP_TYPES,
+        )
+        _set_text("domain_warp_amplitude", cfg.get("domain_warp_amplitude", 30.0))
+        _set_text("domain_warp_frequency", cfg.get("domain_warp_frequency", 0.05))
+        _set_dropdown_by_name(
+            "domain_warp_fractal_type",
+            cfg.get("domain_warp_fractal_type", 0),
+            DOMAIN_WARP_FRACTAL_TYPES,
+        )
+        _set_text("domain_warp_fractal_octaves", cfg.get("domain_warp_fractal_octaves", 5))
+        _set_text("domain_warp_fractal_lacunarity", cfg.get("domain_warp_fractal_lacunarity", 2.0))
+        _set_text("domain_warp_fractal_gain", cfg.get("domain_warp_fractal_gain", 0.5))
+
+    # -- JSON helpers --------------------------------------------------------
+
+    @staticmethod
+    def _load_noise_names() -> List[str]:
+        try:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return list(data.get("noise", {}).keys())
+        except Exception:
+            return []
+
+    @staticmethod
+    def _load_noise_config(name: str) -> Optional[Dict[str, Any]]:
+        try:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get("noise", {}).get(name)
+        except Exception:
+            return None
+
+    def _on_load_json(self):
+        """Load the preset selected in the preset dropdown."""
+        dd = self._ctrl.get("preset_dropdown")
+        if dd is None:
+            self._info_label.text = "No hay presets disponibles"
+            return
+        name = dd.selected_text
+        cfg = self._load_noise_config(name)
+        if cfg is None:
+            self._info_label.text = f"No se pudo cargar '{name}'"
+            return
+        self._write_config(cfg)
+        self._info_label.text = f"Preset '{name}' cargado"
+        self._on_update()
+
+    # -- Generation ----------------------------------------------------------
+
+    def _on_update(self):
+        """Read controls, build noise, generate matrix, refresh tilemap."""
+        cfg = self._read_config()
+
+        # Preview size
+        try:
+            pw = max(1, min(4096, int(self._ctrl["preview_w"].text)))
+            ph = max(1, min(4096, int(self._ctrl["preview_h"].text)))
+        except ValueError:
+            self._info_label.text = "Tamaño inválido"
+            return
+
+        NoiseGenerator2D = _get_noise_generator_class()
+        Matrix2D = _get_matrix2d_class()
+
+        try:
+            noise = NoiseGenerator2D.from_dict(cfg)
+            matrix = Matrix2D.create_from_noise(noise, ph, pw)
+        except Exception as e:
+            self._info_label.text = f"Error: {e}"
+            print(f"[NoiseEditor] {e}")
+            return
+
+        self._map_w = pw
+        self._map_h = ph
+
+        # Tileset (lazily created once)
+        if self._tileset is None:
+            self._tileset = TileSet.generate_grayscale_tileset(
+                nsteps=GRAYSCALE_STEPS,
+                tile_size=(TILE_SIZE, TILE_SIZE),
+                columns=GRAYSCALE_STEPS,
+                white_to_black=True,
+            )
+
+        # Tilemap
+        self._tilemap = TileMap(
+            width=pw, height=ph,
+            tile_size=(TILE_SIZE, TILE_SIZE),
+        )
+        self._tilemap.tileset = self._tileset
+
+        tile_ids = np.clip(
+            (matrix._data * (GRAYSCALE_STEPS - 1)).astype(int),
+            0, GRAYSCALE_STEPS - 1,
+        )
+        for r in range(ph):
+            for c in range(pw):
+                self._tilemap.set_tile(c, r, int(tile_ids[r, c]))
+
+        # Camera
+        screen = pygame.display.get_surface()
+        sw, sh = screen.get_size()
+        world_w = pw * TILE_SIZE
+        world_h = ph * TILE_SIZE
+        # Offset the camera origin so the map starts after the panel
+        cam_x = max(0.0, (world_w - (sw - PANEL_WIDTH)) / 2)
+        cam_y = max(0.0, (world_h - sh) / 2)
+
+        self._camera = Camera(
+            x=cam_x, y=cam_y,
+            width=sw, height=sh,
+            zoom=1.0, min_zoom=0.05, max_zoom=20.0,
+        )
+
+        self._info_label.text = f"Generado {ph}×{pw}"
+        print(f"[NoiseEditor] Generated {ph}×{pw}")
+
+    # -- events --------------------------------------------------------------
+
+    def handle_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.running = False
+            return
+
+        if self._ui:
+            self._ui.handle_event(event)
+
+    # -- update --------------------------------------------------------------
+
+    def update(self, dt: float) -> None:
+        if self._ui:
+            self._ui.update(dt)
+
+        if not self._camera:
+            return
+
+        keys = pygame.key.get_pressed()
+
+        # Zoom
+        if keys[pygame.K_e]:
+            self._camera.zoom *= ZOOM_SPEED ** dt
+        elif keys[pygame.K_q]:
+            self._camera.zoom /= ZOOM_SPEED ** dt
+
+        zoom = self._camera.zoom
+        visible_w = self._camera.width / zoom
+        visible_h = self._camera.height / zoom
+        world_w = self._map_w * TILE_SIZE
+        world_h = self._map_h * TILE_SIZE
+        self._camera.set_bounds(
+            min_x=0, max_x=max(0.0, world_w - visible_w),
+            min_y=0, max_y=max(0.0, world_h - visible_h),
+        )
+
+        speed = CAMERA_SPEED / zoom
+        dx = dy = 0.0
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            dx -= speed * dt
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            dx += speed * dt
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            dy -= speed * dt
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            dy += speed * dt
+        if dx or dy:
+            self._camera.move(dx, dy)
+
+    # -- draw ----------------------------------------------------------------
+
+    def draw(self, screen: pygame.Surface) -> None:
+        screen.fill((20, 20, 30))
+
+        # Tilemap (offset to the right of the panel)
+        if self._tilemap and self._camera and self._tileset:
+            # Clip drawing area to the right of the panel
+            sw, sh = screen.get_size()
+            clip_rect = pygame.Rect(PANEL_WIDTH, 0, sw - PANEL_WIDTH, sh)
+            old_clip = screen.get_clip()
+            screen.set_clip(clip_rect)
+
+            # We need to offset the camera drawing so x=0 in the tilemap
+            # appears at PANEL_WIDTH on screen.  We create a subsurface.
+            sub = screen.subsurface(clip_rect)
+            self._tilemap.draw(sub, self._camera, self._tileset)
+
+            screen.set_clip(old_clip)
+
+            # HUD over the tilemap area
+            self._draw_hud(screen)
+
+        # UI panel (drawn last so it's on top)
+        if self._ui:
+            self._ui.draw(screen)
+
+    def _draw_hud(self, screen: pygame.Surface) -> None:
+        small = pygame.font.Font(None, 18)
+        cam = self._camera
+        info = (
+            f"Map: {self._map_h}×{self._map_w}  "
+            f"Cam: ({int(cam.x)},{int(cam.y)})  "
+            f"Zoom: {cam.zoom:.2f}x"
+        )
+        surf = small.render(info, True, (200, 200, 200))
+        screen.blit(surf, (PANEL_WIDTH + 8, 8))
+
+        hint = "WASD/Arrows: Move | Q/E: Zoom | ESC: Quit"
+        hint_surf = small.render(hint, True, (130, 130, 130))
+        rect = hint_surf.get_rect(bottomleft=(PANEL_WIDTH + 8, screen.get_height() - 8))
+        screen.blit(hint_surf, rect)
+
