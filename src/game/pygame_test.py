@@ -12,8 +12,6 @@ Este script demuestra:
 import sys
 from pathlib import Path
 
-from game.test_scenes import NoiseEditorScene
-
 # Agregar el directorio src al path para imports
 src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
@@ -21,8 +19,7 @@ if str(src_dir) not in sys.path:
 
 import pygame
 
-# Importar escena
-from test_scenes.matrix_viewer_scene import MatrixViewerScene
+from game.test_scenes import WorldEditorScene
 
 
 # Constantes
@@ -54,12 +51,12 @@ class BaseGameApp:
 
 
         # Crear y configurar la escena
-        self.scene = NoiseEditorScene()
+        self.scene = WorldEditorScene()
         self.scene.on_enter()
 
         print("✓ Pygame inicializado correctamente")
         print(f"✓ Ventana creada: {WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        print(f"✓ Escena cargada: MatrixViewerScene")
+        print(f"✓ Escena cargada: WorldEditorScene")
 
     def handle_events(self):
         """Maneja eventos de teclado y ratón."""

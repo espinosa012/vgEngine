@@ -58,6 +58,7 @@ from .widgets import (
     TextInput,
     Dropdown,
     NumericInput,
+    TabBar,
 )
 
 # Import containers
@@ -85,6 +86,7 @@ __all__ = [
     'TextInput',
     'Dropdown',
     'NumericInput',
+    'TabBar',
 
     # Containers
     'Container',

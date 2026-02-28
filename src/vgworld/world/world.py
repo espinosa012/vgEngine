@@ -4,11 +4,12 @@ from pathlib import Path
 import tomllib
 
 from virigir_math_utilities import Matrix2D
-from generation import elevation
 from virigir_math_utilities.noise.core import NoiseGenerator
 from virigir_math_utilities.noise.generators.noise2d import NoiseGenerator2D
+from vgworld.world.generation import elevation, latitude
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "world_configs.toml"
+
 
 # TODO: cuando implementemos las pipelines, pedir un README.md del world
 
@@ -17,6 +18,7 @@ class WorldNoiseName(Enum):
     continentality = "Continentality"
     peaks_and_valleys = "PeaksAndValleys"
     volcanic_noise = "VolcanicNoise"
+
 
 class WorldParameterName(Enum):
     global_seed = "GlobalSeed"
@@ -64,9 +66,11 @@ class VGWorld:
     matrix: dict[WorldMatrixName, Matrix2D]
 
     def __init__(self, config_name: str = "default_parameters"):
+        self.parameters = {}
+        self.noise = {}
+        self.matrix = {}
         self.load_parameters_from_toml(config_name)
         self.initialize_noise(config_name)
-        self.initialize_matrix()
 
     def load_parameters_from_toml(self, config_name: str) -> None:
         with open(DEFAULT_CONFIG_PATH, "rb") as f:
@@ -76,6 +80,8 @@ class VGWorld:
         }
 
     def initialize_matrix(self):
+        """Allocate world-size matrices for all WorldMatrixName entries."""
+        self.matrix = {}
         for matrix_name in WorldMatrixName:
             self.matrix[matrix_name] = Matrix2D((self.parameters[WorldParameterName.world_size_x],
                                                  self.parameters[WorldParameterName.world_size_y]))
@@ -90,6 +96,7 @@ class VGWorld:
 
     # Generation
     def run_generation_pipeline_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
+        # TODO: comprobar que la región es válida (dentro de los límites del mundo, init < final, etc)
         for stage in WorldGenerationStage:
             self.run_generation_stage_for_region(stage, init_x, init_y, final_x, final_y)
 
@@ -104,10 +111,14 @@ class VGWorld:
         elif stage is WorldGenerationStage.temperature:
             self.run_temperature_stage_for_region(init_x, final_x, init_y, final_y)
 
-
     """Pasamos las matrices vacías a los métodos que rellenan valores y las recuperamos ya rellenas"""
+
     def run_latitude_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
-        pass
+        latitude.fill_latitude(self.matrix[WorldMatrixName.latitude],
+                               self.parameters[WorldParameterName.equator_latitude],
+                               self.parameters[WorldParameterName.world_size_x],
+                               self.parameters[WorldParameterName.world_size_y],
+                               init_x, final_x, init_y, final_y)
 
     def run_elevation_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         elevation.fill_continental_elevation(self.matrix[WorldMatrixName.continental_elevation],
@@ -119,6 +130,20 @@ class VGWorld:
                                              self.parameters[WorldParameterName.sea_scale],
                                              self.parameters[WorldParameterName.min_continental_height],
                                              init_x, final_x, init_y, final_y)
+
+        elevation.fill_is_volcanic_land(self.matrix[WorldMatrixName.is_volcanic_land],
+                                        self.noise[WorldNoiseName.volcanic_noise],
+                                        self.parameters[WorldParameterName.island_threshold],
+                                        init_x, final_x, init_y, final_y)
+
+        elevation.fill_elevation(self.matrix[WorldMatrixName.elevation],
+                                 self.matrix[WorldMatrixName.is_volcanic_land],
+                                 self.matrix[WorldMatrixName.continental_elevation],
+                                 init_x, final_x, init_y, final_y)
+
+        elevation.fill_is_continent(self.matrix[WorldMatrixName.is_continent], self.matrix[WorldMatrixName.elevation],
+                                    self.parameters[WorldParameterName.sea_elevation_threshold], init_x, final_x,
+                                    init_y, final_y)
 
     def run_river_stage_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):
         pass

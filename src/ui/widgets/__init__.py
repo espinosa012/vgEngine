@@ -13,6 +13,7 @@ from .slider import Slider
 from .text_input import TextInput
 from .dropdown import Dropdown
 from .numeric_input import NumericInput
+from .tab_bar import TabBar
 
 __all__ = [
     'Label',
@@ -24,5 +25,6 @@ __all__ = [
     'TextInput',
     'Dropdown',
     'NumericInput',
+    'TabBar',
 ]
 

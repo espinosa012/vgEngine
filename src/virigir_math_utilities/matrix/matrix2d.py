@@ -620,79 +620,48 @@ class Matrix2D:
         result._mask = np.ones(shape, dtype=np.bool_)
         return result
 
-    def from_noise(
-        self,
-        noise: "NoiseGenerator",
-        row_start: int,
-        row_end: int,
-        col_start: int,
-        col_end: int
-    ) -> None:
+    @classmethod
+    def from_noise(cls, noise, init_x: int, final_x: int, init_y: int, final_y: int) -> "Matrix2D":
         """
-        Fill the matrix with values from a noise region.
-
-        The requested region is clipped to fit within the matrix dimensions.
-        This method uses vectorized operations for efficient large-region sampling.
+        Create a new Matrix2D filled with noise values sampled over a region.
 
         Args:
-            noise: Source noise generator with generate_region or get_value_at method.
-            row_start: Starting row index in noise space (inclusive).
-            row_end: Ending row index in noise space (exclusive).
-            col_start: Starting column index in noise space (inclusive).
-            col_end: Ending column index in noise space (exclusive).
+            noise: Source noise generator with generate_region, get_values_vectorized,
+                   or get_value_at method.
+            init_x: Starting row index in noise space (inclusive).
+            final_x: Ending row index in noise space (exclusive).
+            init_y: Starting column index in noise space (inclusive).
+            final_y: Ending column index in noise space (exclusive).
 
-        Note:
-            The matrix is not resized. If the requested region is larger than
-            the matrix, only the portion that fits will be filled.
+        Returns:
+            A new Matrix2D of shape (final_x - init_x, final_y - init_y).
         """
-        # Validate region
-        if row_end <= row_start or col_end <= col_start:
-            return  # Empty region, nothing to do
+        n_rows = final_x - init_x
+        n_cols = final_y - init_y
+        shape = (n_rows, n_cols)
 
-        # Calculate effective region size (clipped to matrix dimensions)
-        effective_rows = min(row_end - row_start, self._shape[0])
-        effective_cols = min(col_end - col_start, self._shape[1])
-
-        if effective_rows <= 0 or effective_cols <= 0:
-            return
-
-        # Adjust end indices based on matrix size
-        effective_row_end = row_start + effective_rows
-        effective_col_end = col_start + effective_cols
-
-        # Use generate_region for efficient vectorized noise generation
         if hasattr(noise, 'generate_region'):
-            # generate_region expects: [(x_start, x_end, num_points), (y_start, y_end, num_points)]
-            # where coordinates are float and we want integer grid positions
             region = [
-                (float(row_start), float(effective_row_end - 1), effective_rows),
-                (float(col_start), float(effective_col_end - 1), effective_cols)
+                (float(init_x), float(final_x - 1), n_rows),
+                (float(init_y), float(final_y - 1), n_cols),
             ]
             noise_data = noise.generate_region(region)
-
-            # Copy to matrix data (only the portion that fits)
-            self._data[:effective_rows, :effective_cols] = noise_data
-            self._mask[:effective_rows, :effective_cols] = True
-
         elif hasattr(noise, 'get_values_vectorized'):
-            # Use vectorized method with meshgrid
-            rows = np.arange(row_start, effective_row_end, dtype=np.float64)
-            cols = np.arange(col_start, effective_col_end, dtype=np.float64)
+            rows = np.arange(init_x, final_x, dtype=np.float64)
+            cols = np.arange(init_y, final_y, dtype=np.float64)
             xx, yy = np.meshgrid(rows, cols, indexing='ij')
-
-            noise_data = noise.get_values_vectorized(xx.flatten(), yy.flatten())
-            noise_data = noise_data.reshape((effective_rows, effective_cols))
-
-            self._data[:effective_rows, :effective_cols] = noise_data
-            self._mask[:effective_rows, :effective_cols] = True
-
+            noise_data = noise.get_values_vectorized(xx.ravel(), yy.ravel()).reshape(shape)
         else:
-            # Fallback: use get_value_at (slower but always works)
-            for r in range(effective_rows):
-                for c in range(effective_cols):
-                    value = noise.get_value_at((row_start + r, col_start + c))
-                    self._data[r, c] = value
-                    self._mask[r, c] = True
+            noise_data = np.empty(shape, dtype=np.float64)
+            for r in range(n_rows):
+                for c in range(n_cols):
+                    noise_data[r, c] = noise.get_value_at((float(init_x + r), float(init_y + c)))
+
+        result = cls.__new__(cls)
+        result._shape = shape
+        result._data = noise_data.astype(np.float64)
+        result._mask = np.ones(shape, dtype=np.bool_)
+        return result
 
     def fill_values_from_noise_region(
         self,
@@ -794,6 +763,10 @@ class Matrix2D:
         result = self.copy()
         np.clip(result._data, min_value, max_value, out=result._data)
         return result
+
+    def binarize(self, min_threshold: float) -> None:
+        """Set values below min_threshold to 0 and the rest to 1, in-place."""
+        np.greater_equal(self._data, min_threshold, out=self._data)
 
     def normalize(self, new_min: float = 0.0, new_max: float = 1.0) -> "Matrix2D":
         """Normalize values to range [new_min, new_max]."""
