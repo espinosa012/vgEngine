@@ -7,12 +7,11 @@ from core.health.entity_health import EntityHealth
 
 class ItemType(Enum):
     GENERIC    = auto()
+    TOOL       = auto()
     WEAPON     = auto()
     ARMOR      = auto()
     ACCESSORY  = auto()
     CONSUMABLE = auto()
-    QUEST      = auto()
-    MATERIAL   = auto()
 
 class ItemState(Enum):
     ON_GROUND    = auto()
@@ -23,10 +22,8 @@ class ItemState(Enum):
 class BaseItem(GameObject):
     """Clase base para todos los ítems del juego."""
 
-    ITEM_TYPE:      list[ItemType]  = [ItemType.GENERIC]
-    MAX_STACK:      int             = 1
-    MAX_HEALTH:     float           = 100.0   # 0 → ítem sin sistema de salud
-    HEALTH_ENABLED: bool            = True   # activar en subclases que lo necesiten
+    ITEM_TYPE:  list[ItemType] = [ItemType.GENERIC]
+    MAX_HEALTH: float          = 100.0
 
     def __init__(
         self,
@@ -34,25 +31,19 @@ class BaseItem(GameObject):
         description: str = "",
         value: int = 0,
         weight: float = 0.0,
-        quantity: int = 1,
     ) -> None:
         super().__init__(name=name)
 
-        self.item_type:   list[ItemType]        = self.ITEM_TYPE
-        self.description: str                   = description
-        self.value:       int                   = value
-        self.weight:      float                 = weight
-        self.quantity:    int                   = max(1, min(quantity, self.MAX_STACK))
-        self.state:       ItemState             = ItemState.ON_GROUND
-        self.owner:       Optional[object]      = None
+        self.item_type:   list[ItemType]    = self.ITEM_TYPE
+        self.description: str               = description
+        self.value:       int               = value
+        self.weight:      float             = weight
+        self.state:       ItemState         = ItemState.ON_GROUND
+        self.owner:       Optional[object]  = None
 
-        self.health: Optional[EntityHealth] = (
-            EntityHealth(
-                maximum=self.MAX_HEALTH,
-                on_death=self.on_broken,
-            )
-            if self.HEALTH_ENABLED
-            else None
+        self.health: EntityHealth = EntityHealth(
+            maximum=self.MAX_HEALTH,
+            on_death=self.on_broken,
         )
 
     # ------------------------------------------------------------------
@@ -61,18 +52,16 @@ class BaseItem(GameObject):
 
     @property
     def is_broken(self) -> bool:
-        """True si el ítem tiene sistema de salud y ha llegado a 0."""
-        return self.health is not None and not self.health.is_alive
+        """True si la salud del ítem ha llegado a 0."""
+        return not self.health.is_alive
 
     def damage(self, amount: float) -> float:
         """
         Aplica daño a la durabilidad del ítem.
 
         Returns:
-            Daño real aplicado. 0.0 si el ítem no tiene sistema de salud.
+            Daño real aplicado.
         """
-        if self.health is None:
-            return 0.0
         return self.health.damage(amount)
 
     def repair(self, amount: float) -> float:
@@ -80,10 +69,8 @@ class BaseItem(GameObject):
         Repara el ítem en *amount* puntos.
 
         Returns:
-            Cantidad real reparada. 0.0 si el ítem no tiene sistema de salud.
+            Cantidad real reparada.
         """
-        if self.health is None:
-            return 0.0
         return self.health.heal(amount)
 
     def on_broken(self) -> None:
@@ -95,20 +82,6 @@ class BaseItem(GameObject):
         """
         self.destroy()
 
-    # ------------------------------------------------------------------
-    # Stack
-    # ------------------------------------------------------------------
-
-    @property
-    def is_stackable(self) -> bool:
-        return self.MAX_STACK > 1
-
-    def add_to_stack(self, amount: int) -> int:
-        """Añade unidades al stack. Devuelve el sobrante."""
-        space = self.MAX_STACK - self.quantity
-        added = min(amount, space)
-        self.quantity += added
-        return amount - added
 
     # ------------------------------------------------------------------
     # Ciclo de vida
@@ -169,14 +142,12 @@ class BaseItem(GameObject):
     # ------------------------------------------------------------------
 
     def update(self, delta_time: float) -> None:
-        if self.health is not None:
-            self.health.update(delta_time)
+        self.health.update(delta_time)
     def render(self, renderer) -> None:          pass
 
     def __repr__(self) -> str:
         types = "|".join(t.name for t in self.item_type)
         return (
             f"<{self.__class__.__name__} {self.name!r} "
-            f"[{types}] "
-            f"qty={self.quantity}/{self.MAX_STACK} {self.state.name}>"
+            f"[{types}] {self.state.name}>"
         )

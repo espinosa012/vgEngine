@@ -35,9 +35,9 @@ from src.ui import (
     UIManager, Label, Button, VBox, HBox, NumericInput, ScrollView,
     SelectableList,
 )
-from core.character.base import BaseCharacter
 from core.character.shape import RectShape
 from core.color.color import Color
+from game.character import GameCharacter
 
 from .base_scene import BaseScene
 
@@ -146,9 +146,9 @@ class CharacterScene(BaseScene):
         self._obstacle_surf: Optional[pygame.Surface] = None
 
         # Game state
-        self._characters: List[BaseCharacter] = []
-        self._char_cells: dict = {}              # id(char) → (tile_x, tile_y)
-        self._obstacles:  Set[Tuple[int, int]] = set()   # {(tile_x, tile_y)}
+        self._characters: List[GameCharacter] = []
+        self._char_cells: dict = {}
+        self._obstacles:  Set[Tuple[int, int]] = set()
 
         # UI
         self._ui: Optional[UIManager] = None
@@ -158,7 +158,7 @@ class CharacterScene(BaseScene):
         self._char_list:      Optional[SelectableList]  = None
 
         # Selection state
-        self._selected_char: Optional[BaseCharacter] = None
+        self._selected_char: Optional[GameCharacter] = None
 
         # Layout
         self._screen_w: int = 0
@@ -376,7 +376,7 @@ class CharacterScene(BaseScene):
         char_h = random.randint(CHAR_H_MIN, CHAR_H_MAX)
         fill, border = _random_char_color()
 
-        char = BaseCharacter(
+        char = GameCharacter(
             x=0, y=0,
             name=f"char_{len(self._characters)}",
             grid_pos=(tx, ty),
