@@ -11,7 +11,7 @@ import pygame
 from typing import Optional
 
 from .base_scene import BaseScene
-from src.game.character import BaseCharacter
+from core.character import BaseCharacter
 
 
 class CharacterTestScene(BaseScene):

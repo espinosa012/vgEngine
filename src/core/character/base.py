@@ -104,6 +104,24 @@ class BaseCharacter(GameObject):
         """Current position in grid (cell) coordinates."""
         return self.grid_x, self.grid_y
 
+    @property
+    def health_percentage(self) -> float:
+        """Get health as a percentage (0.0 to 1.0)."""
+        if self.max_health <= 0:
+            return 0.0
+        return self.health / self.max_health
+
+    def set_velocity(self, vx: float, vy: float) -> None:
+        """
+        Set the character's velocity directly.
+
+        Args:
+            vx: Horizontal velocity in pixels per second.
+            vy: Vertical velocity in pixels per second.
+        """
+        self.velocity_x = vx
+        self.velocity_y = vy
+
     # ------------------------------------------------------------------
     # Walkability — override in subclasses
     # ------------------------------------------------------------------

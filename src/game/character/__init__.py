@@ -1,9 +1,9 @@
 """
 Character package for game entities.
-Contains base character class and controller system.
+BaseCharacter has been consolidated into core.character.
 """
 
-from .character import BaseCharacter
+from core.character import BaseCharacter
 
 __all__ = [
     'BaseCharacter'
