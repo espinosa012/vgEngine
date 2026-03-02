@@ -26,7 +26,7 @@ def apply_spline_points(
     interpolated with a natural cubic spline; values outside the range
     of control points are extrapolated following the spline.
 
-    The operation is fully vectorised (no Python loops over cells) and
+    The operation is fully vectorized (no Python loops over cells) and
     works directly on the internal NumPy arrays for maximum performance.
 
     Args:
@@ -88,7 +88,7 @@ def apply_spline_points(
     src_data = matrix.data       # read-only np view
     src_mask = matrix.mask       # read-only np view
 
-    # Evaluate the spline for *all* cells at once (vectorised)
+    # Evaluate the spline for *all* cells at once (vectorized)
     remapped_data = spline(src_data)
 
     # Preserve unassigned cells: copy zeros where mask is False

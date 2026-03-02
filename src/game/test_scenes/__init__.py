@@ -11,6 +11,7 @@ from .random_terrain_scene import RandomTerrainScene
 from .character_test_scene import CharacterTestScene
 from .matrix_viewer_scene import MatrixViewerScene
 from .world_editor_scene import WorldEditorScene
+from .character_scene import CharacterScene
 
 # Registry of all available scenes
 AVAILABLE_SCENES = [
@@ -18,6 +19,7 @@ AVAILABLE_SCENES = [
     RandomTerrainScene,
     CharacterTestScene,
     MatrixViewerScene,
+    CharacterScene,
 ]
 
 
@@ -58,8 +60,8 @@ __all__ = [
     "MatrixViewerScene",
     "NoiseEditorScene",
     "WorldEditorScene",
+    "CharacterScene",
     "AVAILABLE_SCENES",
     "get_scene_by_index",
     "get_scene_list",
 ]
-

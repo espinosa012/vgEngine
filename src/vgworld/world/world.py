@@ -1,5 +1,4 @@
 import json
-from enum import Enum
 from pathlib import Path
 
 
@@ -9,7 +8,6 @@ from virigir_math_utilities.noise.core import NoiseGenerator
 from virigir_math_utilities.noise.generators.noise2d import NoiseGenerator2D
 from vgworld.world.generation import elevation, latitude
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "world_configs.toml"
 DEFAULT_NOISE_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "config.json"
 
 
@@ -22,24 +20,26 @@ class VGWorld:
     noise: dict[WorldNoiseName, NoiseGenerator]
     matrix: dict[WorldMatrixName, Matrix2D]
 
-    def __init__(self, config_name: str = "default_parameters"):
+    def __init__(self, config_name: str | None = None):
         self.regenerate_world(config_name)
         # TODO: pruebas
         self.run_generation_pipeline_for_region(0, self.parameters[WorldParameterName.world_size_x], 0,
                                                 self.parameters[WorldParameterName.world_size_y])
 
-    def regenerate_world(self, config_name: str = "default_parameters"):
+    def regenerate_world(self, config_name: str | None = None) -> None:
         self.load_parameters_from_toml(config_name)
-        self.initialize_noise(config_name)
+        self.initialize_noise()
         self.initialize_matrix()
 
-    def load_parameters_from_toml(self, config_name: str) -> None:
+    DEFAULT_PARAM_CONFIG = "default_parameters"
+
+    def load_parameters_from_toml(self, config_name: str | None = None) -> None:
         self.parameters = {}
-        with open(DEFAULT_NOISE_CONFIG_PATH, "r", encoding="utf-8") as f:
-            raw = json.load(f)
+        raw: dict = self._load_config_file()
+        name = config_name if config_name is not None else self.DEFAULT_PARAM_CONFIG
         self.parameters = {
             WorldParameterName[k]: v
-            for k, v in raw.get("parameters", {}).get(config_name, {}).items()
+            for k, v in raw.get("parameters", {}).get(name, {}).items()
             if k in WorldParameterName.__members__
         }
 
@@ -50,16 +50,20 @@ class VGWorld:
             self.matrix[matrix_name] = Matrix2D((self.parameters[WorldParameterName.world_size_x],
                                                  self.parameters[WorldParameterName.world_size_y]))
 
-    def initialize_noise(self, config_name: str):
+    def initialize_noise(self):
         self.noise = {}
-        with open(DEFAULT_NOISE_CONFIG_PATH, "r", encoding="utf-8") as f:
-            raw = json.load(f)
+        raw: dict = self._load_config_file()
         for name, noise_data in raw.get("noise", {}).items():
             try:
                 key = WorldNoiseName[name]
                 self.noise[key] = NoiseGenerator2D.from_dict(noise_data)
             except KeyError:
                 pass  # noise key not in WorldNoiseName enum, skip
+
+    @staticmethod
+    def _load_config_file() -> dict:
+        with open(DEFAULT_NOISE_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     # Generation
     def run_generation_pipeline_for_region(self, init_x: int, final_x: int, init_y: int, final_y: int):

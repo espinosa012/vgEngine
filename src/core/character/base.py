@@ -33,6 +33,8 @@ class BaseCharacter(GameObject):
         grid_pos: GridPos = (0, 0),
         move_speed: float = 4.0,
         shape: Optional[CharacterShape] = None,
+        tile_w: int = 16,
+        tile_h: int = 16,
     ):
         """
         Initialize a character.
@@ -68,13 +70,18 @@ class BaseCharacter(GameObject):
         self.world = world
         self.grid_x: int = grid_pos[0]
         self.grid_y: int = grid_pos[1]
+        self.tile_w: int = tile_w
+        self.tile_h: int = tile_h
 
         self._movement: Optional[MovementComponent] = None
         if world is not None:
             self._movement = MovementComponent(
                 is_walkable_fn=self._cell_is_walkable,
                 move_speed=move_speed,
+                tile_w=tile_w,
+                tile_h=tile_h,
             )
+            self._movement.set_cell(grid_pos)
 
         # ------------------------------------------------------------------
         # Visual shape
@@ -136,6 +143,48 @@ class BaseCharacter(GameObject):
             return False
         return self._movement.request_move_to(self.grid_position, destination)
 
+    def move_to_cell(
+        self,
+        destination: GridPos,
+        is_walkable_fn,
+        move_speed: float = 4.0,
+    ) -> bool:
+        """
+        Move to *destination* using a caller-supplied walkability function.
+
+        Creates a temporary MovementComponent if none exists (i.e. no world
+        was provided at construction time), using the scene's obstacle set
+        directly.
+
+        Args:
+            destination:    Target (tile_x, tile_y) grid position.
+            is_walkable_fn: Callable[(tile_x, tile_y)] → bool.
+            move_speed:     Cells per second (default 4).
+
+        Returns:
+            True if a path was found and movement started.
+        """
+        if self._movement is None:
+            self._movement = MovementComponent(
+                is_walkable_fn=is_walkable_fn,
+                move_speed=move_speed,
+                tile_w=self.tile_w,
+                tile_h=self.tile_h,
+            )
+            self._movement.set_cell(self.grid_position)
+        else:
+            # Update the walkability function and speed in-place
+            self._movement._is_walkable = is_walkable_fn
+            self._movement.move_speed = move_speed
+
+        return self._movement.request_move_to(self.grid_position, destination)
+
+    def get_path_to(self, destination: GridPos) -> list:
+        """Return the remaining planned path (including current target cell)."""
+        if self._movement is None:
+            return []
+        return self._movement.remaining_path
+
     def stop_grid_movement(self) -> None:
         """Interrupt grid-based movement immediately."""
         if self._movement is not None:
@@ -180,6 +229,12 @@ class BaseCharacter(GameObject):
             self._movement.update(delta_time, on_step=self._on_step)
             if self._movement.is_moving:
                 self.is_moving = True
+            # Sync world position from smooth interpolation
+            # Offset so the character is bottom-centred on its cell
+            self.x = (self._movement.pixel_x
+                      + (self.tile_w - self.shape.width) / 2)
+            self.y = (self._movement.pixel_y
+                      + self.tile_h - self.shape.height - 2)
 
     # ------------------------------------------------------------------
     # Render
@@ -197,6 +252,41 @@ class BaseCharacter(GameObject):
             surface: The pygame.Surface to draw onto.
         """
         self.shape.draw(surface, self.x, self.y)
+
+    def render_to_tilemap(
+        self,
+        surface: "pygame.Surface",
+        tile_x: int,
+        tile_y: int,
+        tile_w: int,
+        tile_h: int,
+        floor_gap: int = 2,
+    ) -> None:
+        """
+        Draw the character centred at the bottom of a tilemap cell.
+
+        The character is horizontally centred inside the cell and sits just
+        above the cell's bottom edge, leaving *floor_gap* pixels of space
+        between the character's feet and the tile floor.
+
+        Args:
+            surface:    Target pygame.Surface (the tilemap viewport surface).
+            tile_x:     Column index of the target cell in tile units.
+            tile_y:     Row index of the target cell in tile units.
+            tile_w:     Width of a single tile in pixels.
+            tile_h:     Height of a single tile in pixels.
+            floor_gap:  Pixels of separation between the character bottom and
+                        the cell floor (default: 2).
+        """
+        # Top-left pixel of the target cell
+        cell_px = tile_x * tile_w
+        cell_py = tile_y * tile_h
+
+        # Horizontal centre; vertical aligned to the bottom with the gap
+        draw_x = cell_px + (tile_w - self.shape.width) // 2
+        draw_y = cell_py + tile_h - self.shape.height - floor_gap
+
+        self.shape.draw(surface, draw_x, draw_y)
 
     # ------------------------------------------------------------------
     # Health

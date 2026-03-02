@@ -19,7 +19,7 @@ if str(src_dir) not in sys.path:
 
 import pygame
 
-from game.test_scenes import WorldEditorScene
+from game.test_scenes import CharacterScene
 
 
 # Constantes
@@ -38,7 +38,7 @@ class BaseGameApp:
 
         # Crear ventana
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
-        pygame.display.set_caption("Matrix Viewer - vgEngine")
+        pygame.display.set_caption("Character Scene - vgEngine")
 
         # Reloj para controlar FPS
         self.clock = pygame.time.Clock()
@@ -47,16 +47,13 @@ class BaseGameApp:
         self.running = True
         self.frame_count = 0
 
-
-
-
         # Crear y configurar la escena
-        self.scene = WorldEditorScene()
+        self.scene = CharacterScene()
         self.scene.on_enter()
 
         print("✓ Pygame inicializado correctamente")
         print(f"✓ Ventana creada: {WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        print(f"✓ Escena cargada: WorldEditorScene")
+        print(f"✓ Escena cargada: CharacterScene")
 
     def handle_events(self):
         """Maneja eventos de teclado y ratón."""

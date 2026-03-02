@@ -14,6 +14,7 @@ from .text_input import TextInput
 from .dropdown import Dropdown
 from .numeric_input import NumericInput
 from .tab_bar import TabBar
+from .selectable_list import SelectableList
 
 __all__ = [
     'Label',
@@ -26,5 +27,6 @@ __all__ = [
     'Dropdown',
     'NumericInput',
     'TabBar',
+    'SelectableList',
 ]
 

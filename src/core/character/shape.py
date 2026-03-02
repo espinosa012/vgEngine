@@ -65,20 +65,25 @@ class RectShape(CharacterShape):
         color: Color = Colors.WHITE,
         border_color: Color = None,
         border_width: int = 0,
+        selection_color: Color = None,
     ) -> None:
         """
         Args:
-            width:        Rectangle width in pixels.
-            height:       Rectangle height in pixels.
-            color:        Fill color (default: white).
-            border_color: Border color. If None and border_width > 0,
-                          a dark version of the fill color is used.
-            border_width: Border thickness in pixels (0 = no border).
+            width:           Rectangle width in pixels.
+            height:          Rectangle height in pixels.
+            color:           Fill color (default: white).
+            border_color:    Border color. If None and border_width > 0,
+                             a dark version of the fill color is used.
+            border_width:    Border thickness in pixels (0 = no border).
+            selection_color: Color of the selection outline drawn when
+                             ``selected`` is True.  Defaults to a bright
+                             white/yellow if None.
         """
         self._width = width
         self._height = height
         self.color = color
         self.border_width = border_width
+        self.selected: bool = False
 
         if border_color is None and border_width > 0:
             # Auto-derive a darker border from the fill color
@@ -91,6 +96,8 @@ class RectShape(CharacterShape):
         else:
             self.border_color = border_color
 
+        self.selection_color: Color = selection_color or Color(255, 240, 60)
+
     # ------------------------------------------------------------------
     # CharacterShape interface
     # ------------------------------------------------------------------
@@ -102,9 +109,15 @@ class RectShape(CharacterShape):
         # Fill
         pygame.draw.rect(surface, self.color.to_rgba(), rect)
 
-        # Border
+        # Normal border
         if self.border_width > 0 and self.border_color is not None:
             pygame.draw.rect(surface, self.border_color.to_rgba(), rect, self.border_width)
+
+        # Selection outline — 1 px outside the rect, 2 px thick, bright colour
+        if self.selected:
+            sel_rect = pygame.Rect(rect.x - 2, rect.y - 2,
+                                   rect.width + 4, rect.height + 4)
+            pygame.draw.rect(surface, self.selection_color.to_rgba(), sel_rect, 2)
 
     @property
     def width(self) -> int:

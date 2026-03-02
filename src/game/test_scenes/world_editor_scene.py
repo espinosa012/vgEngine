@@ -414,7 +414,7 @@ class WorldEditorScene(BaseScene):
         # VGWorld
         try:
             VGWorld, *_ = _get_world_classes()
-            self._world = VGWorld("default_parameters")
+            self._world = VGWorld()
             print("[WorldEditor] VGWorld loaded.")
         except Exception as e:
             import traceback
