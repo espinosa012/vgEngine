@@ -1,10 +1,13 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 import pygame
 
 from core.base.game_object import GameObject
 from core.character.movement_component import MovementComponent
 from core.character.shape import CharacterShape, RectShape
 from core.color.color import Colors
+
+if TYPE_CHECKING:
+    from core.character.controller import CharacterController
 
 GridPos = Tuple[int, int]
 
@@ -94,6 +97,15 @@ class BaseCharacter(GameObject):
             color=Colors.WHITE,
             border_width=1,
         )
+
+        # ------------------------------------------------------------------
+        # Controller (opcional)
+        # ------------------------------------------------------------------
+        # Asigna un CharacterController (o subclase) para que el personaje
+        # se actualice automáticamente en cada frame.
+        # Un personaje sin controller sigue funcionando con normalidad;
+        # simplemente no tiene comportamiento propio.
+        self.controller: Optional["CharacterController"] = None
 
     # ------------------------------------------------------------------
     # Grid position
@@ -253,6 +265,10 @@ class BaseCharacter(GameObject):
                       + (self.tile_w - self.shape.width) / 2)
             self.y = (self._movement.pixel_y
                       + self.tile_h - self.shape.height - 2)
+
+        # Controller tick (IA, lógica de jugador, etc.)
+        if self.controller is not None:
+            self.controller.tick(delta_time)
 
     # ------------------------------------------------------------------
     # Render
